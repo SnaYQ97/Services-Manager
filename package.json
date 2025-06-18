@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
