@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react'
-import { getAllServices } from './actions'
+import { useState, useEffect } from 'react';
+import { getAllServices } from './actions';
+import { Service } from '../../../../generated/prisma';
 
 const ServiceList = () => {
   const [services, setServices] = useState<Service[]>([])
