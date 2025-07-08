@@ -15,19 +15,55 @@ datasource db {
 }
 
 model Service {
-  id        String @id @default(cuid()) @db.VarChar(30)
-  name      String
-  price     Float
+  id        String              @id @default(cuid()) @db.VarChar(30)
+  name      String              @db.VarChar(100)
+  price     Float               @db.Real
+  purchases PurchasedService[]
 } 
 
 model Transaction {
-  id        String @id @default(cuid()) @db.VarChar(30)
-  purshedServices 
+  id            String              @id @default(cuid()) @db.VarChar(30)
+  createdAt     DateTime            @default(now()) @db.Timestamp(6)
+  totalAmount   Float               @db.Real
+  paymentType   PaymentType       
+  services      PurchasedService[]
+  employee      Employee            @relation(fields: [employeeId], references: [id])
+  employeeId    String              @db.VarChar(30)
+
+  promoCode     PromoCode?          @relation(fields: [promoCodeId], references: [id])
+  promoCodeId   String?             @db.VarChar(30)
 }
 
-model Order {
-  id         String @default(cuid()) @db.VarChar(30)
-  serviceIds String[] @id @default(cuid()) @db.VarChar(30)
-  service    Service[] @relation(fields:[serviceId], references: [id])
+model PurchasedService {
+  id            String      @id @default(cuid()) @db.VarChar(30)
+  service       Service     @relation(fields: [serviceId], references: [id])
+  serviceId     String      @db.VarChar(30)
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String      @db.VarChar(30)
+  quantity      Int         @default(1)
+  unitPrice     Float       // snapshot ceny z momentu zakupu
+}
 
+model Employee {
+  id            String         @id @default(cuid()) @db.VarChar(30)
+  name          String         @db.VarChar(100)
+  email         String         @unique
+  transactions  Transaction[]
+}
+
+model PromoCode {
+  id          String         @id @default(cuid()) @db.VarChar(30)
+  code        String         @unique @db.VarChar(50)
+  description String?        @db.VarChar(255)
+  discount    Float          @db.Real              // np. 10.0 zł lub 10%
+  isPercent   Boolean        @default(false)
+  active      Boolean        @default(true)
+  validFrom   DateTime?      @db.Timestamp(6)      // data rozpoczęcia promocji
+  validTo     DateTime?      @db.Timestamp(6)      // data zakończenia promocji
+  transactions Transaction[]
+}
+
+enum PaymentType {
+  CASH
+  CARD
 }
