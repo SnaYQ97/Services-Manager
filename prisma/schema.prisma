@@ -18,4 +18,16 @@ model Service {
   id        String @id @default(cuid()) @db.VarChar(30)
   name      String
   price     Float
+} 
+
+model Transaction {
+  id        String @id @default(cuid()) @db.VarChar(30)
+  purshedServices 
+}
+
+model Order {
+  id         String @default(cuid()) @db.VarChar(30)
+  serviceIds String[] @id @default(cuid()) @db.VarChar(30)
+  service    Service[] @relation(fields:[serviceId], references: [id])
+
 }
