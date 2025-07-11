@@ -4,7 +4,8 @@ import ServiceList from "./components/ServiceList";
 
 const ServiceManagement = () => {
   return (
-     <div className="flex flex-row justify-between items-center w">
+      <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-8">Services Management</h1>
         <ServiceList />
         <ServicePanel />
     </div>
