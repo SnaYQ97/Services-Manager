@@ -29,9 +29,6 @@ model Transaction {
   services      PurchasedService[]
   employee      Employee            @relation(fields: [employeeId], references: [id])
   employeeId    String              @db.VarChar(30)
-
-  promoCode     PromoCode?          @relation(fields: [promoCodeId], references: [id])
-  promoCodeId   String?             @db.VarChar(30)
 }
 
 model PurchasedService {
@@ -49,18 +46,6 @@ model Employee {
   name          String         @db.VarChar(100)
   email         String         @unique
   transactions  Transaction[]
-}
-
-model PromoCode {
-  id          String         @id @default(cuid()) @db.VarChar(30)
-  code        String         @unique @db.VarChar(50)
-  description String?        @db.VarChar(255)
-  discount    Float          @db.Real              // np. 10.0 zł lub 10%
-  isPercent   Boolean        @default(false)
-  active      Boolean        @default(true)
-  validFrom   DateTime?      @db.Timestamp(6)      // data rozpoczęcia promocji
-  validTo     DateTime?      @db.Timestamp(6)      // data zakończenia promocji
-  transactions Transaction[]
 }
 
 enum PaymentType {
