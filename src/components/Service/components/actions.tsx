@@ -13,6 +13,9 @@ export async function getAllServices() {
       },
       employee: true,
     },
+    orderBy: {
+      createdAt: 'desc'
+    }
   });
 
   // Transform the data to include service details
