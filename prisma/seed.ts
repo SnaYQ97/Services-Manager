@@ -1,56 +1,85 @@
-import { PaymentType } from '../generated/prisma';
-import { prisma,  } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
+import fs from 'fs';
+import cuid from 'cuid';
+
+interface ServiceItem {
+  quantity: number;
+  unitPrice: number;
+  serviceName: string;
+}
 
 async function main() {
-  // Create an employee first
-  const aliceEmployee = await prisma.employee.upsert({
-    where: { email: 'alice@prisma.io' },
-    update: {},
-    create: {
-      name: 'Alice',
-      email: 'alice@prisma.io',
-    },
-  });
+  const rawData = fs.readFileSync('./prisma/data.json', { encoding: 'utf-8' });
+  const data = JSON.parse(rawData);
 
-  // Create some services
-  const cleaningService = await prisma.service.create({
-    data: {
-      name: 'Cleaning Service',
-      price: 50.99,
-    },
-  });
+  // Create employees first (using email as unique identifier)
+  for (const employee of data.employees) {
+    await prisma.employee.upsert({
+      where: { email: employee.email },
+      update: {},
+      create: employee,
+    });
+  }
 
-  const maintenanceService = await prisma.service.create({
-    data: {
-      name: 'Appliance Maintenance',
-      price: 75.99,
-    },
-  });
-
-  // Create a transaction with services
-  const transaction = await prisma.transaction.create({
-    data: {
-      totalAmount: 126.98,
-      paymentType: PaymentType.CARD,
-      employeeId: aliceEmployee.id,
-
-      // Add purchased services to the transaction
-      services: {
-        create: [
-          {
-            serviceId: cleaningService.id,
-            quantity: 2,
-            unitPrice: 50.99,
-          },
-          {
-            serviceId: maintenanceService.id,
-            quantity: 1,
-            unitPrice: 75.99,
-          },
-        ],
+  // Create services and store their IDs
+  const serviceIdMap = new Map<string, string>();
+  for (const service of data.services) {
+    const createdService = await prisma.service.upsert({
+      where: { 
+        name: service.name,
+        id: service.id || '',
       },
-    },
-  });
+      update: {},
+      create: {
+        ...service,
+        id: service.id || cuid(),
+      },
+    });
+
+    serviceIdMap.set(service.name, createdService.id);
+  }
+
+  // Process transactions
+  for (const transactionData of data.transactions) {
+    const { totalAmount, paymentType, employeeName, services } = transactionData;
+
+    // Find the corresponding employee by name
+    const employee = await prisma.employee.findFirst({
+      where: {
+        name: employeeName,
+      },
+    });
+
+    if (!employee) continue; // Skip if employee not found
+
+    try {
+      // Create transaction with services
+      const transaction = await prisma.transaction.create({
+        data: {
+          totalAmount,
+          paymentType,
+          employeeId: employee.id,
+
+          // Add purchased services to the transaction
+          services: {
+            create: services.map((serviceItem: ServiceItem) => ({
+              service: {
+                connect: {
+                  id: serviceIdMap.get(serviceItem.serviceName)
+                }
+              },
+                quantity: serviceItem.quantity,
+                unitPrice: serviceItem.unitPrice,
+            })),
+          },
+          },
+      });
+
+      console.log('Created transaction:', transaction.id);
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+    }
+  }
 }
 
 main()
