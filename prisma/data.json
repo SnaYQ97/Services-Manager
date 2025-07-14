@@ -61,7 +61,11 @@
       "paymentType": "CARD",
       "employeeName": "Alice Smith",
       "services": [
-        { "serviceName": "Massage Therapy", "quantity": 2, "unitPrice": 150.99 }
+        {
+          "serviceName": "Massage Therapy",
+          "quantity": 2,
+          "unitPrice": 150.99
+        }
       ]
     },
     {
@@ -69,8 +73,16 @@
       "paymentType": "CASH",
       "employeeName": "Bob Johnson",
       "services": [
-        { "serviceName": "Rehabilitation Program Development", "quantity": 2, "unitPrice": 50.99 },
-        { "serviceName": "Muscle Strengthening Exercises", "quantity": 1, "unitPrice": 45.99 }
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 2,
+          "unitPrice": 50.99
+        },
+        {
+          "serviceName": "Muscle Strengthening Exercises",
+          "quantity": 1,
+          "unitPrice": 45.99
+        }
       ]
     },
     {
@@ -78,8 +90,16 @@
       "paymentType": "CARD",
       "employeeName": "Charlie Brown",
       "services": [
-        { "serviceName": "Neuromuscular Re-education", "quantity": 1, "unitPrice": 130.99 },
-        { "serviceName": "Massage Therapy", "quantity": 1, "unitPrice": 120.99 }
+        {
+          "serviceName": "Neuromuscular Re-education",
+          "quantity": 1,
+          "unitPrice": 130.99
+        },
+        {
+          "serviceName": "Massage Therapy",
+          "quantity": 1,
+          "unitPrice": 120.99
+        }
       ]
     },
     {
@@ -87,9 +107,21 @@
       "paymentType": "CASH",
       "employeeName": "Alice Smith",
       "services": [
-        { "serviceName": "Joint Mobilization", "quantity": 1, "unitPrice": 75.99 },
-        { "serviceName": "Soft Tissue Release", "quantity": 1, "unitPrice": 70.99 },
-        { "serviceName": "Rehabilitation Program Development", "quantity": 1, "unitPrice": 44.99 }
+        {
+          "serviceName": "Joint Mobilization",
+          "quantity": 1,
+          "unitPrice": 75.99
+        },
+        {
+          "serviceName": "Soft Tissue Release",
+          "quantity": 1,
+          "unitPrice": 70.99
+        },
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 1,
+          "unitPrice": 44.99
+        }
       ]
     },
     {
@@ -97,9 +129,21 @@
       "paymentType": "CARD",
       "employeeName": "Bob Johnson",
       "services": [
-        { "serviceName": "Gait Analysis", "quantity": 1, "unitPrice": 120.99 },
-        { "serviceName": "Postural Assessment & Correction", "quantity": 1, "unitPrice": 80.99 },
-        { "serviceName": "Muscle Strengthening Exercises", "quantity": 1, "unitPrice": 41.99 }
+        {
+          "serviceName": "Gait Analysis",
+          "quantity": 1,
+          "unitPrice": 120.99
+        },
+        {
+          "serviceName": "Postural Assessment & Correction",
+          "quantity": 1,
+          "unitPrice": 80.99
+        },
+        {
+          "serviceName": "Muscle Strengthening Exercises",
+          "quantity": 1,
+          "unitPrice": 41.99
+        }
       ]
     },
     {
@@ -107,8 +151,16 @@
       "paymentType": "CASH",
       "employeeName": "Charlie Brown",
       "services": [
-        { "serviceName": "Balance Training", "quantity": 2, "unitPrice": 60.99 },
-        { "serviceName": "Soft Tissue Release", "quantity": 1, "unitPrice": 60.99 }
+        {
+          "serviceName": "Balance Training",
+          "quantity": 2,
+          "unitPrice": 60.99
+        },
+        {
+          "serviceName": "Soft Tissue Release",
+          "quantity": 1,
+          "unitPrice": 60.99
+        }
       ]
     },
     {
@@ -116,7 +168,11 @@
       "paymentType": "CARD",
       "employeeName": "Alice Smith",
       "services": [
-        { "serviceName": "Hydrotherapy", "quantity": 1, "unitPrice": 100.99 }
+        {
+          "serviceName": "Hydrotherapy",
+          "quantity": 1,
+          "unitPrice": 100.99
+        }
       ]
     },
     {
@@ -124,7 +180,11 @@
       "paymentType": "CARD",
       "employeeName": "Bob Johnson",
       "services": [
-        { "serviceName": "Neuromuscular Re-education", "quantity": 3, "unitPrice": 130.99 }
+        {
+          "serviceName": "Neuromuscular Re-education",
+          "quantity": 3,
+          "unitPrice": 130.99
+        }
       ]
     },
     {
@@ -132,8 +192,16 @@
       "paymentType": "CASH",
       "employeeName": "Charlie Brown",
       "services": [
-        { "serviceName": "Postural Assessment & Correction", "quantity": 2, "unitPrice": 80.99 },
-        { "serviceName": "Muscle Strengthening Exercises", "quantity": 1, "unitPrice": 20.00 }
+        {
+          "serviceName": "Postural Assessment & Correction",
+          "quantity": 2,
+          "unitPrice": 80.99
+        },
+        {
+          "serviceName": "Muscle Strengthening Exercises",
+          "quantity": 1,
+          "unitPrice": 20.0
+        }
       ]
     },
     {
@@ -141,10 +209,187 @@
       "paymentType": "CARD",
       "employeeName": "Alice Smith",
       "services": [
-        { "serviceName": "Massage Therapy", "quantity": 1, "unitPrice": 150.99 },
-        { "serviceName": "Joint Mobilization", "quantity": 1, "unitPrice": 75.99 },
-        { "serviceName": "Rehabilitation Program Development", "quantity": 1, "unitPrice": 59.99 }
+        {
+          "serviceName": "Massage Therapy",
+          "quantity": 1,
+          "unitPrice": 150.99
+        },
+        {
+          "serviceName": "Joint Mobilization",
+          "quantity": 1,
+          "unitPrice": 75.99
+        },
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 1,
+          "unitPrice": 59.99
+        }
       ]
+    },
+    {
+      "totalAmount": 215.25,
+      "paymentType": "CASH",
+      "employeeName": "Bob Johnson",
+      "services": [
+        {
+          "serviceName": "Soft Tissue Release",
+          "quantity": 3,
+          "unitPrice": 71.75
+        }
+      ],
+      "createdAt": "2025-07-11T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 292.94,
+      "paymentType": "CASH",
+      "employeeName": "Bob Johnson",
+      "services": [
+        {
+          "serviceName": "Muscle Strengthening Exercises",
+          "quantity": 1,
+          "unitPrice": 44.52
+        },
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 2,
+          "unitPrice": 49.63
+        },
+        {
+          "serviceName": "Joint Mobilization",
+          "quantity": 2,
+          "unitPrice": 74.58
+        }
+      ],
+      "createdAt": "2025-07-10T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 217.1,
+      "paymentType": "CASH",
+      "employeeName": "Bob Johnson",
+      "services": [
+        {
+          "serviceName": "Joint Mobilization",
+          "quantity": 1,
+          "unitPrice": 75.59
+        },
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 3,
+          "unitPrice": 47.17
+        }
+      ],
+      "createdAt": "2025-07-09T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 537.08,
+      "paymentType": "CASH",
+      "employeeName": "Alice Smith",
+      "services": [
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 2,
+          "unitPrice": 51.31
+        },
+        {
+          "serviceName": "Joint Mobilization",
+          "quantity": 3,
+          "unitPrice": 70.85
+        },
+        {
+          "serviceName": "Postural Assessment & Correction",
+          "quantity": 3,
+          "unitPrice": 73.97
+        }
+      ],
+      "createdAt": "2025-06-06T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 331.2,
+      "paymentType": "CASH",
+      "employeeName": "Charlie Brown",
+      "services": [
+        {
+          "serviceName": "Gait Analysis",
+          "quantity": 3,
+          "unitPrice": 110.4
+        }
+      ],
+      "createdAt": "2025-06-02T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 422.25,
+      "paymentType": "CASH",
+      "employeeName": "Bob Johnson",
+      "services": [
+        {
+          "serviceName": "Massage Therapy",
+          "quantity": 3,
+          "unitPrice": 140.75
+        }
+      ],
+      "createdAt": "2025-05-18T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 122.65,
+      "paymentType": "CASH",
+      "employeeName": "Charlie Brown",
+      "services": [
+        {
+          "serviceName": "Neuromuscular Re-education",
+          "quantity": 1,
+          "unitPrice": 122.65
+        }
+      ],
+      "createdAt": "2025-01-13T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 379.58,
+      "paymentType": "CARD",
+      "employeeName": "Alice Smith",
+      "services": [
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 2,
+          "unitPrice": 51.75
+        },
+        {
+          "serviceName": "Neuromuscular Re-education",
+          "quantity": 2,
+          "unitPrice": 138.04
+        }
+      ],
+      "createdAt": "2024-11-04T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 135.15,
+      "paymentType": "CASH",
+      "employeeName": "Alice Smith",
+      "services": [
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 1,
+          "unitPrice": 50.0
+        },
+        {
+          "serviceName": "Postural Assessment & Correction",
+          "quantity": 1,
+          "unitPrice": 85.15
+        }
+      ],
+      "createdAt": "2024-07-12T00:00:00.000Z"
+    },
+    {
+      "totalAmount": 104.4,
+      "paymentType": "CARD",
+      "employeeName": "Charlie Brown",
+      "services": [
+        {
+          "serviceName": "Rehabilitation Program Development",
+          "quantity": 2,
+          "unitPrice": 52.2
+        }
+      ],
+      "createdAt": "2023-07-13T00:00:00.000Z"
     }
   ]
 }

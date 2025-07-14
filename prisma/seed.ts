@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import fs from 'fs';
 import cuid from 'cuid';
+import { DateTime } from 'luxon';
 
 interface ServiceItem {
   quantity: number;
@@ -41,7 +42,7 @@ async function main() {
 
   // Process transactions
   for (const transactionData of data.transactions) {
-    const { totalAmount, paymentType, employeeName, services } = transactionData;
+    const { totalAmount, paymentType, employeeName, services, createdAt } = transactionData;
 
     // Find the corresponding employee by name
     const employee = await prisma.employee.findFirst({
@@ -59,6 +60,7 @@ async function main() {
           totalAmount,
           paymentType,
           employeeId: employee.id,
+          createdAt,
 
           // Add purchased services to the transaction
           services: {

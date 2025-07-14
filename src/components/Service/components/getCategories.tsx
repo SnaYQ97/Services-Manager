@@ -55,73 +55,31 @@ const getDateCategory = (date: Date, transaction: Transaction) => {
 
 
   const diffDays = Math.floor(now.diff(dateInDateTime, 'days').days);
+  const diffYears = Math.floor(now.diff(dateInDateTime, 'years').years);
 
   switch (true) {
     case diffDays === 0:
-
-
-
-
-
-
-
-
       addToCategory("Today", transaction);
       break;
     case diffDays === 1:
-
-
-
-
-
-
-
-
       addToCategory("Yesterday", transaction);
       break;
-    case diffDays > 1 && diffDays <= 4:
+    case diffDays > 1 && diffDays <= 3:
 
       // Oblicz nazwę dnia tygodnia
       const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
       const todayIndex = now.weekday - 1;
-
 
       const targetIndex = (todayIndex - diffDays + 7) % 7; // Dodajemy 7, aby uniknąć ujemnych indeksów
       const weekdayLabel = weekdays[targetIndex];
       addToCategory(weekdayLabel, transaction);
       break;
-
-
-
-
-
-
-
-
-
-    case dateInDateTime.year === 0:
-
-
-
-
-
-
-
-
+    case diffYears === 0:
       // Formatuj krótką datę (np. "23 Mar")
       const shortDateLabel = dateInDateTime.toFormat('dd MMM');
       addToCategory(shortDateLabel, transaction);
       break;
     default:
-
-
-
-
-
-
-
-
       // Formatuj pełną datę (np. "23 Mar 2024")
       const fullDateLabel = dateInDateTime.toFormat('dd MMM yyyy');
       addToCategory(fullDateLabel, transaction);
