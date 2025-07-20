@@ -1,6 +1,12 @@
 import { PaymentType } from "../../../../generated/prisma";
 import { DateTime } from "luxon";
 
+export interface ServicesDetails {
+  serviceName: string;
+    quantity: number;
+    unitPrice: number;
+}
+
 export interface Transaction {
   id: string;
   createdAt: Date;
@@ -9,11 +15,7 @@ export interface Transaction {
   employee: {
     name: string;
   };
-  servicesDetails?: {
-    serviceName: string;
-    quantity: number;
-    unitPrice: number;
-  }[];
+  servicesDetails?: ServicesDetails[];
   totalServicesCount?: number;
 }
 export type TransactionWithCategory = { label: string; items: Transaction[] };
