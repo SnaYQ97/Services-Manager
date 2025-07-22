@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 
-export async function getAllServices() {
+export async function getAllTransactions() {
   // Get transactions with their services and employee information
   const transactions = await prisma.transaction.findMany({
     include: {
@@ -49,4 +49,9 @@ export async function getTransactionWithServices(id: string) {
   if (!transaction) throw new Error('Transaction not found');
 
   return transaction;
+}
+
+export async function getAllServices() {
+  const services = await prisma.service.findMany();
+  return services;
 }

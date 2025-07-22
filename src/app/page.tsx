@@ -1,3 +1,5 @@
+"use client";
+
 import Service from "@/components/Service/Service";
 import Statistics from "@/components/Statistics/Statistics";
 import TopBar from "@/components/TopBar/TopBar";
