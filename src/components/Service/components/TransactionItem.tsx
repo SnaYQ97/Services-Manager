@@ -14,8 +14,25 @@ const TransactionItem = ( {id, totalAmount, paymentType, createdAt, servicesDeta
         <div
             className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
         >
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="font-semibold text-gray-900">Transaction #{id}</h2>
+            <div className="p-6 border-b border-gray-100 flex justify-evenly items-center">
+                 <div className="flex w-fit flex-col">
+                    <p className="text-sm text-gray-500">Transaction Id:</p>
+                    <p className="text-sm text-gray-500">#{id}</p>    
+                </div>
+                <div className="flex w-fit flex-col">
+                    <p className="text-sm text-gray-500">Payment Type:</p>
+                    <p className="text-sm text-gray-500">{paymentType}</p>    
+                </div>
+                <div className="flex w-fit flex-col">
+                    <p className="text-sm text-gray-500">Amount:</p>
+                    <p className="text-sm text-gray-500">${totalAmount.toFixed(2)}</p>    
+                </div>
+                <div className="flex w-fit flex-column">
+                    <p className="text-sm text-gray-500">Date and Time:</p>
+                    <p className="text-sm text-gray-500">{DateTime.fromJSDate(createdAt).toFormat('yyyy LLL dd', { locale: 'pl' })}</p>    
+                </div>
+               
+
                 <button
                     onClick={() => setExpandedTransactionId(expandedTransactionId === id ? null : id)}
                     className="text-blue-500 hover:text-blue-700 transition-colors"
@@ -25,14 +42,8 @@ const TransactionItem = ( {id, totalAmount, paymentType, createdAt, servicesDeta
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={expandedTransactionId === id ? 'M19 9l-7 7-7-7' : 'M5 15l7-7 7 7'} />
                     </svg>
                 </button>
+                
             </div>
-
-            <div className="p-6 space-y-3">
-                <p className="text-sm text-gray-500">Amount: ${totalAmount.toFixed(2)}</p>
-                <p className="text-sm text-gray-500">Payment Type: {paymentType}</p>
-                <p className="text-sm text-gray-500">Date and Time: {DateTime.fromJSDate(createdAt).toFormat('yyyy LLL dd', { locale: 'pl' })}</p>
-            </div>
-
 
             <div className="border-t border-gray-100 w-fit">
                 {expandedTransactionId === id && (
