@@ -15,8 +15,8 @@ const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDeta
             className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
         >
             <div className="flex flex-row jusitify-betweenr">
-                <div className="flex w-fit flex-col basis-1/4 rounded-r-full bg-red-50">
-                    <p className="text-sm text-gray-500">Card</p>
+                <div className="flex w-fit flex-col rounded-r-full w-fit bg-red-50 flex items-center justify-center">
+                    <p className="text-gray-500 w-[50px]">${totalAmount.toFixed(2)} {paymentType == PaymentType.CARD ? "Card" : "Cash"}</p>
                 </div>
                 <div className="p-2 border-b border-gray-100 flex items-center flex flex-row justify-between w-full items-center">
                     <div className="p-2 flex justify-evenly flex flex-row gap-3 w-full">
