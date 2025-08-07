@@ -5,18 +5,28 @@ import { useState } from 'react';
 import { Transaction } from "./getCategories"
 import PurchasedService from "./PurchasedService";
 import { PaymentType } from '../../../../generated/prisma';
+import Image from "next/image";
 
 const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDetails }: Transaction) => {
 
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
-
+    const iconSource = paymentType === PaymentType.CARD ? './creditCard.svg' : './moneyBag.svg';
+    const imageAlt = paymentType === PaymentType.CARD ? 'card' : 'cash';
     return (
         <div
             className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
         >
             <div className="flex flex-row jusitify-betweenr">
                 <div className="flex w-fit flex-col rounded-r-full w-fit bg-red-50 flex items-center justify-center">
-                    <p className="text-gray-500 w-[50px]">${totalAmount.toFixed(2)} {paymentType == PaymentType.CARD ? "Card" : "Cash"}</p>
+                    <p className="text-gray-500 w-[50px]">${totalAmount.toFixed(2)}
+                        <Image
+                            className="dark:invert"
+                            src={iconSource}
+                            alt=""
+                            height={30}
+                            priority
+                        />
+                    </p>
                 </div>
                 <div className="p-2 border-b border-gray-100 flex items-center flex flex-row justify-between w-full items-center">
                     <div className="p-2 flex justify-evenly flex flex-row gap-3 w-full">
