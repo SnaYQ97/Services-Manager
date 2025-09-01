@@ -6,27 +6,26 @@ import { Transaction } from "./getCategories"
 import PurchasedService from "./PurchasedService";
 import { PaymentType } from '../../../../generated/prisma';
 import Image from "next/image";
+import CreditCard from "./../../../../public/creditCard.svg";
+import MoneyBag from "./../../../../public/moneyBag.svg"
 
 const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDetails }: Transaction) => {
 
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
-    const iconSource = paymentType === PaymentType.CARD ? './creditCard.svg' : './moneyBag.svg';
+    const iconSource = paymentType === PaymentType.CARD ? CreditCard : MoneyBag;
     const imageAlt = paymentType === PaymentType.CARD ? 'card' : 'cash';
     return (
-        <div
-            className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
-        >
+        <div className="group bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div className="flex flex-row jusitify-betweenr">
-                <div className="flex w-fit flex-col rounded-r-full w-fit bg-red-50 flex items-center justify-center">
-                    <p className="text-gray-500 w-[50px]">${totalAmount.toFixed(2)}
-                        <Image
-                            className="dark:invert"
-                            src={iconSource}
-                            alt=""
-                            height={30}
-                            priority
-                        />
-                    </p>
+                <div className="flex gap-1 flex-row rounded-r-full w-auto p-3 flex items-center justify-center">
+                    <Image
+                        className="dark:invert text-gray-500"
+                        src={iconSource}
+                        alt={imageAlt}
+                        height={24}
+                        priority
+                    />
+                    <p className="text-sm text-gray-500">${totalAmount.toFixed(2)}</p>
                 </div>
                 <div className="p-2 border-b border-gray-100 flex items-center flex flex-row justify-between w-full items-center">
                     <div className="p-2 flex justify-evenly flex flex-row gap-3 w-full">
@@ -34,13 +33,13 @@ const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDeta
                             <p className="text-sm text-gray-500">Transaction Id:</p>
                             <p className="text-sm text-gray-500">#{id}</p>
                         </div>
-                        <div className="flex w-fit flex-col basis-1/4">
+                        {/* <div className="flex w-fit flex-col basis-1/4">
                             <p className="text-sm text-gray-500">Amount:</p>
                             <p className="text-sm text-gray-500">${totalAmount.toFixed(2)}</p>
-                        </div>
+                        </div> */}
                         <div className="flex w-fit flex-col basis-1/4">
                             <p className="text-sm text-gray-500">Date and Time:</p>
-                            <p className="text-sm text-gray-500">{DateTime.fromJSDate(createdAt).toFormat('yyyy LLL dd', { locale: 'pl' })}</p>
+                            <p className="text-sm text-gray-500">{DateTime.fromJSDate(createdAt).toFormat('dd LLL yyyy', { locale: 'pl' })}</p>
                         </div>
                     </div>
                     <button
