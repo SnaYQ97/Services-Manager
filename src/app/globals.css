@@ -133,3 +133,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Płynne przejście kolorów przy podglądzie/zmianie motywu – klasa dodawana na chwilę przez ThemeToggle */
+html.theme-fade,
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease, fill 250ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-fade,
+  html.theme-fade * {
+    transition: none !important;
+  }
+}

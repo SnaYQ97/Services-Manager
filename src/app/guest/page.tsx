@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { getBookableServices } from "@/actions/booking";
 import GuestView from "@/components/Guest/GuestView";
+import ThemeToggle from "@/components/ThemeToggle";
 import PageHeader from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,9 +18,12 @@ export default async function GuestPage() {
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
           <Link href="/guest" className="font-semibold tracking-tight">Service Manager</Link>
           <Badge variant="secondary">Gość</Badge>
-          <Button asChild variant="ghost" size="sm" className="ml-auto text-muted-foreground">
-            <Link href="/login"><LogIn />Zaloguj się</Link>
-          </Button>
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+              <Link href="/login"><LogIn />Zaloguj się</Link>
+            </Button>
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Role } from "../../../generated/prisma";
 import CartIndicator from "./CartIndicator";
 import NavLinks from "./NavLinks";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const TopBar = ({ name, role }: { name: string; role: Role }) => (
   <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
@@ -15,6 +16,7 @@ const TopBar = ({ name, role }: { name: string; role: Role }) => (
       <NavLinks isManager={role === Role.MANAGER} />
       <div className="ml-auto flex items-center gap-1">
         <CartIndicator />
+        <ThemeToggle />
         <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
           <Link href="/account" title="Moje konto">
             <UserRound />
