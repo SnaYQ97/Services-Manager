@@ -318,7 +318,7 @@
         {
           "serviceName": "Muscle Strengthening Exercises",
           "quantity": 1,
-          "unitPrice": 20.0
+          "unitPrice": 20
         }
       ]
     },
@@ -486,7 +486,7 @@
         {
           "serviceName": "Rehabilitation Program Development",
           "quantity": 1,
-          "unitPrice": 50.0
+          "unitPrice": 50
         },
         {
           "serviceName": "Postural Assessment & Correction",

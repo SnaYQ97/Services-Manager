@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
+import { hashPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { timeToMinutes } from '@/lib/time';
 import { Prisma, Role } from '../../generated/prisma';
 
@@ -22,6 +23,7 @@ export async function getManagementData() {
       name: e.name,
       email: e.email,
       role: e.role,
+      hasPassword: e.passwordHash !== null,
       serviceIds: e.services.map((s) => s.serviceId),
       workingHours: e.workingHours.map(({ weekday, startMinute, endMinute }) => ({ weekday, startMinute, endMinute })),
     })),
@@ -43,6 +45,7 @@ export interface EmployeeInput {
   name: string;
   email: string;
   role: Role;
+  password?: string; // puste = bez zmiany
   serviceIds: string[];
   workingHours: { weekday: number; start: string; end: string }[];
 }
@@ -52,6 +55,10 @@ export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   if (!name || !email) return { ok: false, error: 'Podaj imię i e-mail.' };
+  const password = input.password ?? '';
+  if (password && password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Hasło musi mieć co najmniej ${MIN_PASSWORD_LENGTH} znaków.` };
+  }
 
   const workingHours = input.workingHours.map(({ weekday, start, end }) => ({
     weekday,
@@ -67,9 +74,11 @@ export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
     if (otherManagers === 0) return { ok: false, error: 'Musi zostać przynajmniej jeden kierownik.' };
   }
 
+  const passwordHash = password ? await hashPassword(password) : undefined;
+
   try {
     await prisma.$transaction(async (tx) => {
-      const data = { name, email, role: input.role };
+      const data = { name, email, role: input.role, ...(passwordHash ? { passwordHash } : {}) };
       const employee = input.id
         ? await tx.employee.update({ where: { id: input.id }, data })
         : await tx.employee.create({ data });

@@ -1,16 +1,12 @@
 import Image from "next/image";
-import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { logout } from "@/actions/account";
 import { getCurrentEmployee } from "@/lib/session";
 import { Role } from "../../../generated/prisma";
 import NavLinks from "./NavLinks";
-import UserSwitcher from "./UserSwitcher";
 
 const TopBar = async () => {
-  const [currentEmployee, employees] = await Promise.all([
-    getCurrentEmployee(),
-    prisma.employee.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, role: true } }),
-  ]);
-  const isManager = currentEmployee?.role === Role.MANAGER;
+  const currentEmployee = await getCurrentEmployee();
 
   return (
     <div className="flex flex-row justify-between items-center w-full gap-4 p-2 border-b border-gray-100 mb-4">
@@ -22,8 +18,19 @@ const TopBar = async () => {
           height={38}
           priority
         />
-        <NavLinks isManager={isManager} />
-        <UserSwitcher employees={employees} currentEmployeeId={currentEmployee?.id ?? ''} />
+        {currentEmployee && (
+          <>
+            <NavLinks isManager={currentEmployee.role === Role.MANAGER} />
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <Link href="/account" className="hover:text-gray-900">
+                {currentEmployee.name}{currentEmployee.role === Role.MANAGER ? " (kierownik)" : ""}
+              </Link>
+              <form action={logout}>
+                <button className="px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50">Wyloguj</button>
+              </form>
+            </div>
+          </>
+        )}
       </div>
   );
 };

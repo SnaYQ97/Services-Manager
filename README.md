@@ -2,6 +2,21 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Konfiguracja lokalna
+
+Utwórz plik `.env` (jest w `.gitignore`):
+
+```
+DATABASE_URL="postgresql://USER@localhost:5432/servicemanager"
+AUTH_SECRET="..."            # np. openssl rand -base64 32
+SEED_PASSWORD_ALICE="..."    # hasła testowe dla seeda, po jednym na pracownika z prisma/data.json
+SEED_PASSWORD_BOB="..."
+SEED_PASSWORD_CHARLIE="..."
+SEED_PASSWORD_DIANA="..."
+```
+
+Potem `npx prisma migrate deploy` i `npx prisma db seed`. Kierownik (Alice) nadaje hasła pozostałym w Zarządzanie → Pracownicy.
+
 First, run the development server:
 
 ```bash

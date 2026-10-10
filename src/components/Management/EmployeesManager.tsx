@@ -15,7 +15,7 @@ interface DaySchedule {
   end: string;
 }
 
-const NEW_EMPLOYEE: Employee = { id: '', name: '', email: '', role: Role.EMPLOYEE, serviceIds: [], workingHours: [] };
+const NEW_EMPLOYEE: Employee = { id: '', name: '', email: '', role: Role.EMPLOYEE, hasPassword: false, serviceIds: [], workingHours: [] };
 
 const toWeek = (workingHours: Employee['workingHours']): DaySchedule[] =>
   WEEKDAYS.map((_, i) => {
@@ -32,6 +32,7 @@ const EmployeeCard = ({ employee, services, onDone }: { employee: Employee; serv
   const [name, setName] = useState(employee.name);
   const [email, setEmail] = useState(employee.email);
   const [role, setRole] = useState(employee.role);
+  const [password, setPassword] = useState('');
   const [serviceIds, setServiceIds] = useState(employee.serviceIds);
   const [week, setWeek] = useState(() => toWeek(employee.workingHours));
   const [message, setMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
@@ -50,6 +51,7 @@ const EmployeeCard = ({ employee, services, onDone }: { employee: Employee; serv
         name,
         email,
         role,
+        password,
         serviceIds,
         workingHours: week.flatMap((d, i) => d.enabled ? [{ weekday: i + 1, start: d.start, end: d.end }] : []),
       });
@@ -58,6 +60,7 @@ const EmployeeCard = ({ employee, services, onDone }: { employee: Employee; serv
         return;
       }
       setMessage({ type: 'info', text: 'Zapisano.' });
+      setPassword('');
       router.refresh();
       onDone?.();
     });
@@ -72,6 +75,14 @@ const EmployeeCard = ({ employee, services, onDone }: { employee: Employee; serv
           <option value={Role.EMPLOYEE}>Pracownik</option>
           <option value={Role.MANAGER}>Kierownik</option>
         </select>
+        <input
+          className="border border-gray-200 rounded-md px-2 py-1"
+          type="password"
+          autoComplete="new-password"
+          placeholder={employee.hasPassword ? 'Nowe hasło (puste = bez zmian)' : 'Hasło (brak = bez dostępu)'}
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
       </div>
 
       <div className="flex flex-wrap gap-6">

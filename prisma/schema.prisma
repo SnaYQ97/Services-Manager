@@ -49,6 +49,7 @@ model Employee {
   id                 String              @id @default(cuid()) @db.VarChar(30)
   name               String              @db.VarChar(100)
   email              String              @unique
+  passwordHash       String?             @db.VarChar(100) // bcrypt; null = nie może się zalogować
   role               Role                @default(EMPLOYEE)
   transactions       Transaction[]
   services           EmployeeService[]
