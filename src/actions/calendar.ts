@@ -2,13 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
-import { requireManager } from '@/lib/session';
+import { requireEmployee, requireManager } from '@/lib/session';
 import { plural } from '@/lib/format';
 import { dateOnlyToDb, salonDay, timeToMinutes } from '@/lib/time';
 import { PUBLISHED } from '@/lib/availability';
 import { BookingStatus } from '../../generated/prisma';
 
 export async function getCalendarDay(date: string) {
+  await requireEmployee();
   const day = salonDay(date);
 
   // w kalendarzu pokazujemy specjalistów: osoby z przypisanymi usługami lub grafikiem

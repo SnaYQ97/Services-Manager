@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { normalizePhone } from '@/lib/format';
 import { salonDay } from '@/lib/time';
+import { requireEmployee } from '@/lib/session';
 import { PaymentType, Prisma } from '../../generated/prisma';
 
 const PAGE_SIZE = 20;
@@ -39,6 +40,7 @@ const buildWhere = ({ from, to, payment, query }: TransactionFilters): Prisma.Tr
 };
 
 export async function getTransactions(filters: TransactionFilters) {
+  await requireEmployee();
   const where = buildWhere(filters);
   const [total, aggregate] = await Promise.all([
     prisma.transaction.count({ where }),

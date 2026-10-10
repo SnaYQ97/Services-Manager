@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { plural } from "@/lib/format";
 import { initials, summarizeSchedule } from "@/lib/schedule";
 import { formatTime } from "@/lib/time";
+import { ROLE_LABELS } from "@/lib/roles";
 import { Role } from "../../../generated/prisma";
 import EmployeeDialog from "./EmployeeDialog";
 import UnlockButton from "./UnlockButton";
@@ -31,7 +32,7 @@ const EmployeesManager = ({ employees, services }: ManagementData) => (
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   {employee.name}
-                  {employee.role === Role.MANAGER && <Badge variant="secondary">Kierownik</Badge>}
+                  {employee.role !== Role.EMPLOYEE && <Badge variant="secondary">{ROLE_LABELS[employee.role]}</Badge>}
                   {!employee.hasPassword && <Badge variant="outline" className="text-muted-foreground">Bez dostępu</Badge>}
                   {employee.lockedUntil && (
                     <>

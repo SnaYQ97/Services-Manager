@@ -58,6 +58,7 @@ export interface EmployeeInput {
 
 export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
   await requireManager();
+  if (!Object.values(Role).includes(input.role)) return { ok: false, error: 'Wybierz rolę.' };
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   if (!name || !email) return { ok: false, error: 'Podaj imię i e-mail.' };

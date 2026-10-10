@@ -147,6 +147,7 @@ enum PaymentType {
 
 enum Role {
   EMPLOYEE
+  RECEPTIONIST // rejestratorka: rezerwacje, płatności, transakcje, podgląd grafiku
   MANAGER
 }
 

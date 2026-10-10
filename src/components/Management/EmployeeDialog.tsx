@@ -130,6 +130,7 @@ const EmployeeDialog = ({ employee, services, trigger }: Props) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={Role.EMPLOYEE}>Pracownik</SelectItem>
+                    <SelectItem value={Role.RECEPTIONIST}>Rejestratorka</SelectItem>
                     <SelectItem value={Role.MANAGER}>Kierownik</SelectItem>
                   </SelectContent>
                 </Select>

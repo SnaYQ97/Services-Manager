@@ -11,6 +11,8 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      // gość bez logowania: tylko usługi i wolne terminy
+      if (nextUrl.pathname === '/guest') return true;
       if (nextUrl.pathname.startsWith('/login')) {
         return isLoggedIn ? Response.redirect(new URL('/', nextUrl)) : true;
       }

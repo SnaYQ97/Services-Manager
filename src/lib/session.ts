@@ -20,3 +20,10 @@ export async function isManager() {
 export async function requireManager() {
   if (!(await isManager())) throw new Error('Ta operacja wymaga roli kierownika.');
 }
+
+/** Dane klientów (kalendarz, transakcje) – tylko dla zalogowanych; gość widzi wyłącznie usługi i wolne terminy */
+export async function requireEmployee() {
+  const employee = await getCurrentEmployee();
+  if (!employee) throw new Error('Zaloguj się, aby zobaczyć te dane.');
+  return employee;
+}
