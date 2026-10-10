@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import type { BookableService } from "@/actions/booking";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
 import type { SpecialistOverview } from "@/lib/specialists";
 import SpecialistAvatar from "@/components/Specialists/SpecialistAvatar";
+import SearchInput from "@/components/SearchInput";
+import { matchesQuery } from "@/lib/search";
 
 interface Props {
   services: BookableService[];
@@ -18,6 +21,8 @@ interface Props {
 
 const ServicePanel = ({ services, specialists, counts, onAdd, onRemove }: Props) => {
   const specialistById = new Map(specialists.map((specialist) => [specialist.id, specialist]));
+  const [query, setQuery] = useState('');
+  const visibleServices = services.filter((service) => matchesQuery(service.name, query));
 
   if (services.length === 0) {
     return <p className="text-sm text-muted-foreground">Brak usług. Kierownik może je dodać w Zarządzaniu.</p>;
@@ -25,8 +30,14 @@ const ServicePanel = ({ services, specialists, counts, onAdd, onRemove }: Props)
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
+      <div className="border-b p-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Szukaj usługi…" />
+      </div>
+      {visibleServices.length === 0 && (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">Brak usług pasujących do „{query.trim()}”.</p>
+      )}
       <ul className="divide-y">
-        {services.map((service) => {
+        {visibleServices.map((service) => {
           const count = counts[service.id] ?? 0;
           const bookable = service.employees.length > 0;
           return (

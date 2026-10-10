@@ -137,7 +137,7 @@ const CartItemEditor = ({ item, service, busy, refreshToken, onChange, onRemove 
           </div>
         ) : slots.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {noFreeDate ? "Brak wolnych terminów u wybranego specjalisty." : "Brak wolnych terminów tego dnia."}
+            {noFreeDate ? "Brak wolnych terminów w opublikowanym grafiku." : "Brak wolnych terminów tego dnia."}
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Wolne godziny">
@@ -150,6 +150,7 @@ const CartItemEditor = ({ item, service, busy, refreshToken, onChange, onRemove 
                   role="option"
                   aria-selected={selected}
                   title={slot.employeeIds.map(employeeName).join(", ")}
+                  aria-label={`${formatTime(slot.startAt)}, ${slot.employeeIds.map(employeeName).join(", ")}`}
                   onClick={() => onChange({
                     slot: {
                       startAt: slot.startAt,

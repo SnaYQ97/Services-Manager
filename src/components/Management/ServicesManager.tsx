@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import SearchInput from "@/components/SearchInput";
+import { matchesQuery } from "@/lib/search";
 import ServiceEditor from "./ServiceEditor";
 
 type Service = ManagementData['services'][number];
@@ -26,6 +28,8 @@ const ServicesManager = ({ services, specialists }: Props) => {
   const [selected, setSelected] = useState<string | null>(null);
   // nowa usługa po zapisie: przełącz panel dopiero, gdy pojawi się na odświeżonej liście
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const visibleServices = services.filter(s => matchesQuery(s.name, query));
   const editorRef = useRef<HTMLDivElement>(null);
   const specialistById = new Map(specialists.map(s => [s.id, s]));
   const selectedService = services.find(s => s.id === selected);
@@ -47,17 +51,19 @@ const ServicesManager = ({ services, specialists }: Props) => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Wybierz usługę, aby ją edytować i zobaczyć grafik przypisanych specjalistów.</p>
+        <SearchInput value={query} onChange={setQuery} placeholder="Szukaj usługi…" className="min-w-56 flex-1 sm:max-w-sm" />
         <Button onClick={() => setSelected(NEW)}><Plus />Nowa usługa</Button>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
-        {services.length === 0 ? (
-          <Card className="items-center py-10 text-sm text-muted-foreground">Brak usług. Dodaj pierwszą.</Card>
+        {visibleServices.length === 0 ? (
+          <Card className="items-center py-10 text-sm text-muted-foreground">
+            {services.length === 0 ? 'Brak usług. Dodaj pierwszą.' : `Brak usług pasujących do „${query.trim()}”.`}
+          </Card>
         ) : (
           <Card className="gap-0 overflow-hidden py-0">
             <ul className="divide-y">
-              {services.map(service => (
+              {visibleServices.map(service => (
                 <li key={service.id}>
                   <button
                     type="button"

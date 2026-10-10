@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SearchInput from "@/components/SearchInput";
+import { matchesQuery } from "@/lib/search";
 import { minutesToTime, WEEKDAYS } from "@/lib/time";
 import { Role } from "../../../generated/prisma";
 
@@ -47,6 +49,7 @@ const EmployeeDialog = ({ employee, services, trigger }: Props) => {
   const [role, setRole] = useState<Role>(Role.EMPLOYEE);
   const [password, setPassword] = useState('');
   const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const [serviceQuery, setServiceQuery] = useState('');
   const [week, setWeek] = useState<DaySchedule[]>(() => toWeek([]));
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +61,7 @@ const EmployeeDialog = ({ employee, services, trigger }: Props) => {
     setRole(employee?.role ?? Role.EMPLOYEE);
     setPassword('');
     setServiceIds(employee?.serviceIds ?? []);
+    setServiceQuery('');
     setWeek(toWeek(employee?.workingHours ?? []));
     setError(null);
   };
@@ -158,13 +162,20 @@ const EmployeeDialog = ({ employee, services, trigger }: Props) => {
             ))}
           </TabsContent>
 
-          <TabsContent value="services" className="grid gap-2 pt-2 sm:grid-cols-2">
-            {services.map(service => (
-              <div key={service.id} className="flex items-center gap-2">
-                <Checkbox id={`service-${service.id}`} checked={serviceIds.includes(service.id)} onCheckedChange={() => toggleService(service.id)} />
-                <Label htmlFor={`service-${service.id}`} className="font-normal">{service.name}</Label>
-              </div>
-            ))}
+          <TabsContent value="services" className="space-y-3 pt-2">
+            <SearchInput value={serviceQuery} onChange={setServiceQuery} placeholder="Szukaj usługi…" />
+            <p className="text-xs text-muted-foreground">Zaznaczono {serviceIds.length} z {services.length}</p>
+            <div className="grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+              {services.filter(service => matchesQuery(service.name, serviceQuery)).map(service => (
+                <div key={service.id} className="flex items-center gap-2">
+                  <Checkbox id={`service-${service.id}`} checked={serviceIds.includes(service.id)} onCheckedChange={() => toggleService(service.id)} />
+                  <Label htmlFor={`service-${service.id}`} className="font-normal">{service.name}</Label>
+                </div>
+              ))}
+              {!services.some(service => matchesQuery(service.name, serviceQuery)) && (
+                <p className="text-sm text-muted-foreground">Brak usług pasujących do „{serviceQuery.trim()}”.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 
