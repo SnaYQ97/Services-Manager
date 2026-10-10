@@ -7,6 +7,14 @@ export interface ServicesDetails {
     unitPrice: number;
 }
 
+export interface BookingDetails {
+  serviceName: string;
+  specialistName: string;
+  clientName: string;
+  startAt: Date;
+  status: string;
+}
+
 export interface Transaction {
   id: string;
   createdAt: Date;
@@ -16,6 +24,7 @@ export interface Transaction {
     name: string;
   };
   servicesDetails?: ServicesDetails[];
+  bookingsDetails?: BookingDetails[];
   totalServicesCount?: number;
 }
 export type TransactionWithCategory = { label: string; items: Transaction[] };

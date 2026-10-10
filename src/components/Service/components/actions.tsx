@@ -12,6 +12,10 @@ export async function getAllTransactions() {
         },
       },
       employee: true,
+      bookings: {
+        include: { service: true, employee: true },
+        orderBy: { startAt: 'asc' },
+      },
     },
     orderBy: {
       createdAt: 'desc'
@@ -27,6 +31,13 @@ export async function getAllTransactions() {
       serviceName: service.service.name,
       quantity: service.quantity,
       unitPrice: service.unitPrice,
+    })),
+    bookingsDetails: transaction.bookings.map(booking => ({
+      serviceName: booking.service.name,
+      specialistName: booking.employee.name,
+      clientName: booking.clientName,
+      startAt: booking.startAt,
+      status: booking.status,
     })),
   }));
 

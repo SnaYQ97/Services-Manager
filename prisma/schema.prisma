@@ -15,20 +15,24 @@ datasource db {
 }
 
 model Service {
-  id        String              @id @default(cuid()) @db.VarChar(30)
-  name      String              @db.VarChar(100)
-  price     Float               @db.Real
-  purchases PurchasedService[]
-} 
+  id          String             @id @default(cuid()) @db.VarChar(30)
+  name        String             @db.VarChar(100)
+  price       Float              @db.Real
+  durationMin Int                @default(60) // czas trwania wizyty w minutach
+  purchases   PurchasedService[]
+  employees   EmployeeService[]
+  bookings    Booking[]
+}
 
 model Transaction {
   id            String              @id @default(cuid()) @db.VarChar(30)
   createdAt     DateTime            @default(now()) @db.Timestamp(6)
   totalAmount   Float               @db.Real
-  paymentType   PaymentType       
+  paymentType   PaymentType
   services      PurchasedService[]
+  bookings      Booking[]
   employee      Employee            @relation(fields: [employeeId], references: [id])
-  employeeId    String              @db.VarChar(30)
+  employeeId    String              @db.VarChar(30) // pracownik, który przyjął płatność
 }
 
 model PurchasedService {
@@ -42,13 +46,82 @@ model PurchasedService {
 }
 
 model Employee {
-  id            String         @id @default(cuid()) @db.VarChar(30)
-  name          String         @db.VarChar(100)
-  email         String         @unique
-  transactions  Transaction[]
+  id                 String              @id @default(cuid()) @db.VarChar(30)
+  name               String              @db.VarChar(100)
+  email              String              @unique
+  role               Role                @default(EMPLOYEE)
+  transactions       Transaction[]
+  services           EmployeeService[]
+  workingHours       WorkingHours[]
+  scheduleExceptions ScheduleException[]
+  bookings           Booking[]
+}
+
+// Usługi, które dany pracownik wykonuje
+model EmployeeService {
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String   @db.VarChar(30)
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId  String   @db.VarChar(30)
+
+  @@id([employeeId, serviceId])
+}
+
+// Stały grafik tygodniowy; minuty liczone od północy (czas lokalny salonu)
+model WorkingHours {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String   @db.VarChar(30)
+  weekday     Int      // 1 = poniedziałek ... 7 = niedziela
+  startMinute Int
+  endMinute   Int
+
+  @@index([employeeId, weekday])
+}
+
+// Urlop / dzień wolny / niedostępność w części dnia
+model ScheduleException {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String   @db.VarChar(30)
+  date        DateTime @db.Date
+  startMinute Int?     // null = cały dzień niedostępny
+  endMinute   Int?
+  reason      String?  @db.VarChar(255)
+
+  @@index([employeeId, date])
+}
+
+model Booking {
+  id            String        @id @default(cuid()) @db.VarChar(30)
+  createdAt     DateTime      @default(now()) @db.Timestamp(6)
+  startAt       DateTime      @db.Timestamptz(6)
+  endAt         DateTime      @db.Timestamptz(6)
+  status        BookingStatus @default(CONFIRMED)
+  clientName    String        @db.VarChar(100)
+  clientPhone   String        @db.VarChar(30)
+  note          String?       @db.VarChar(500)
+  service       Service       @relation(fields: [serviceId], references: [id])
+  serviceId     String        @db.VarChar(30)
+  employee      Employee      @relation(fields: [employeeId], references: [id]) // specjalista
+  employeeId    String        @db.VarChar(30)
+  transaction   Transaction   @relation(fields: [transactionId], references: [id])
+  transactionId String        @db.VarChar(30)
+
+  @@index([employeeId, startAt])
 }
 
 enum PaymentType {
   CASH
   CARD
+}
+
+enum Role {
+  EMPLOYEE
+  MANAGER
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
 }

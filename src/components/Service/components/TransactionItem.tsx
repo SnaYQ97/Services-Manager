@@ -8,8 +8,9 @@ import { PaymentType } from '../../../../generated/prisma';
 import Image from "next/image";
 import CreditCard from "./../../../../public/creditCard.svg";
 import MoneyBag from "./../../../../public/moneyBag.svg"
+import { formatDate, formatTime } from "@/lib/time";
 
-const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDetails }: Transaction) => {
+const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDetails, bookingsDetails }: Transaction) => {
 
     const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
     const iconSource = paymentType === PaymentType.CARD ? CreditCard : MoneyBag;
@@ -65,6 +66,18 @@ const TransactionItem = ({ id, totalAmount, paymentType, createdAt, servicesDeta
                                 );
                             })}
                         </div>
+                        {bookingsDetails && bookingsDetails.length > 0 && (
+                            <>
+                                <h3 className="font-medium text-gray-900 mt-6 mb-2">Wizyty:</h3>
+                                <ul className="text-sm text-gray-600 space-y-1">
+                                    {bookingsDetails.map((booking, index) => (
+                                        <li key={index} className={booking.status === 'CANCELLED' ? 'line-through' : ''}>
+                                            {formatDate(booking.startAt)}, {formatTime(booking.startAt)} – {booking.serviceName}, {booking.specialistName} ({booking.clientName})
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

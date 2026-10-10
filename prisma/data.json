@@ -2,57 +2,175 @@
   "employees": [
     {
       "name": "Alice Smith",
-      "email": "alice@prisma.io"
+      "email": "alice@prisma.io",
+      "role": "MANAGER",
+      "services": [
+        "Postural Assessment & Correction",
+        "Gait Analysis",
+        "Rehabilitation Program Development"
+      ],
+      "workingHours": [
+        {
+          "weekday": 1,
+          "start": "08:00",
+          "end": "16:00"
+        },
+        {
+          "weekday": 2,
+          "start": "08:00",
+          "end": "16:00"
+        },
+        {
+          "weekday": 3,
+          "start": "08:00",
+          "end": "16:00"
+        },
+        {
+          "weekday": 4,
+          "start": "08:00",
+          "end": "16:00"
+        },
+        {
+          "weekday": 5,
+          "start": "08:00",
+          "end": "16:00"
+        }
+      ]
     },
     {
       "name": "Bob Johnson",
-      "email": "bob@prisma.io"
+      "email": "bob@prisma.io",
+      "role": "EMPLOYEE",
+      "services": [
+        "Massage Therapy",
+        "Soft Tissue Release",
+        "Hydrotherapy",
+        "Joint Mobilization"
+      ],
+      "workingHours": [
+        {
+          "weekday": 1,
+          "start": "09:00",
+          "end": "17:00"
+        },
+        {
+          "weekday": 2,
+          "start": "09:00",
+          "end": "17:00"
+        },
+        {
+          "weekday": 3,
+          "start": "09:00",
+          "end": "17:00"
+        },
+        {
+          "weekday": 4,
+          "start": "09:00",
+          "end": "17:00"
+        },
+        {
+          "weekday": 5,
+          "start": "09:00",
+          "end": "17:00"
+        }
+      ]
     },
     {
       "name": "Charlie Brown",
-      "email": "charlie@prisma.io"
+      "email": "charlie@prisma.io",
+      "role": "EMPLOYEE",
+      "services": [
+        "Massage Therapy",
+        "Muscle Strengthening Exercises",
+        "Balance Training",
+        "Neuromuscular Re-education"
+      ],
+      "workingHours": [
+        {
+          "weekday": 2,
+          "start": "12:00",
+          "end": "20:00"
+        },
+        {
+          "weekday": 3,
+          "start": "12:00",
+          "end": "20:00"
+        },
+        {
+          "weekday": 4,
+          "start": "12:00",
+          "end": "20:00"
+        },
+        {
+          "weekday": 5,
+          "start": "12:00",
+          "end": "20:00"
+        },
+        {
+          "weekday": 6,
+          "start": "09:00",
+          "end": "14:00"
+        }
+      ]
+    },
+    {
+      "name": "Diana Prince",
+      "email": "diana@prisma.io",
+      "role": "EMPLOYEE",
+      "services": [],
+      "workingHours": []
     }
   ],
   "services": [
     {
       "name": "Massage Therapy",
-      "price": 150.99
+      "price": 150.99,
+      "durationMin": 60
     },
     {
       "name": "Joint Mobilization",
-      "price": 75.99
+      "price": 75.99,
+      "durationMin": 30
     },
     {
       "name": "Muscle Strengthening Exercises",
-      "price": 45.99
+      "price": 45.99,
+      "durationMin": 45
     },
     {
       "name": "Balance Training",
-      "price": 60.99
+      "price": 60.99,
+      "durationMin": 45
     },
     {
       "name": "Postural Assessment & Correction",
-      "price": 80.99
+      "price": 80.99,
+      "durationMin": 30
     },
     {
       "name": "Gait Analysis",
-      "price": 120.99
+      "price": 120.99,
+      "durationMin": 45
     },
     {
       "name": "Rehabilitation Program Development",
-      "price": 50.99
+      "price": 50.99,
+      "durationMin": 60
     },
     {
       "name": "Hydrotherapy",
-      "price": 100.99
+      "price": 100.99,
+      "durationMin": 45
     },
     {
       "name": "Soft Tissue Release",
-      "price": 70.99
+      "price": 70.99,
+      "durationMin": 30
     },
     {
       "name": "Neuromuscular Re-education",
-      "price": 130.99
+      "price": 130.99,
+      "durationMin": 60
     }
   ],
   "transactions": [

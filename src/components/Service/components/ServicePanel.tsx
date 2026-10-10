@@ -1,42 +1,15 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { getAllServices } from './actions';
-import { Service } from "../../../../generated/prisma" 
+import type { BookableService } from "@/actions/booking";
 
-const ServicePanel = () => {
-  const [services, setServices] = useState<Service[]>([]);
-  const [selectedServices, setSelectedServices] = useState<{[key: string]: number}>({});
+interface Props {
+  services: BookableService[];
+  counts: { [serviceId: string]: number };
+  onAdd: (service: BookableService) => void;
+  onRemove: (serviceId: string) => void;
+}
 
-  const handleServiceClick = (serviceId: string) => {
-    setSelectedServices(prev => ({
-      ...prev,
-        [serviceId]: (prev[serviceId] || 0) + 1
-    }));
-  };
-  const handleRemoveService = (serviceId: string) => {
-    setSelectedServices(prev => {
-      if (!prev[serviceId]) return prev;
-      return {
-        ...prev,
-        [serviceId]: prev[serviceId] - 1
-      };
-    });
-  };
-
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const availableServices = await getAllServices();
-        setServices(availableServices);
-      } catch (error) {
-        console.error('Error fetching services:', error);
-      }
-    };
-
-    fetchServices();
-  }, []);
-
+const ServicePanel = ({ services, counts, onAdd, onRemove }: Props) => {
   return (
     <main className="flex flex-col gap-[32px] w-full md:w-[33.33%]">
       <h1 className="text-3xl font-bold text-gray-900">Available Services</h1>
@@ -49,27 +22,37 @@ const ServicePanel = () => {
             <div
               key={service.id}
               className={`flex flex-col items-start p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-                selectedServices[service.id] > 0 ? 'relative border-2 border-blue-500 ring-1 ring-blue-500' : ''
+                counts[service.id] > 0 ? 'relative border-2 border-blue-500 ring-1 ring-blue-500' : ''
               }`}
-              onClick={() => handleServiceClick(service.id)}
             >
-              {selectedServices[service.id] > 0 && (
+              {counts[service.id] > 0 && (
                 <div className="absolute -top-3 right-2 flex items-center space-x-1">
-                  <span className="text-xs px-2 py-1 bg-blue-100 rounded-full">x{selectedServices[service.id]}</span>
+                  <span className="text-xs px-2 py-1 bg-blue-100 rounded-full">x{counts[service.id]}</span>
                   <span onClick={(e) => {
                       e.stopPropagation();
-                      handleRemoveService(service.id);
-                    }} className="text-xs px-2 py-1 bg-red-100 rounded-full">Odejmij</span>
+                      onRemove(service.id);
+                    }} className="text-xs px-2 py-1 bg-red-100 rounded-full cursor-pointer">Odejmij</span>
               </div>
               )}
               <div className="w-fit mb-2 text-xl font-semibold text-gray-800">
                 {service.name}
             </div>
               <div className="text-gray-600 mb-2">
-                <span>Price: ${service.price.toFixed(2)}</span>
+                <span>Price: ${service.price.toFixed(2)} · {service.durationMin} min</span>
         </div>
               <div className="flex items-center gap-2 w-full pt-3 border-t border-gray-100">
-                <span className="text-sm text-gray-500">Ask for availability</span>
+                <span className="text-sm text-gray-500 flex-auto">
+                  {service.employees.length > 0
+                    ? service.employees.map(({ employee }) => employee.name).join(', ')
+                    : 'Brak specjalisty'}
+                </span>
+                <button
+                  onClick={() => onAdd(service)}
+                  disabled={service.employees.length === 0}
+                  className="text-sm px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Dodaj do koszyka
+                </button>
               </div>
             </div>
           ))}
