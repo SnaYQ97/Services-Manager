@@ -102,13 +102,13 @@ const EmployeeDialog = ({ employee, services, trigger }: Props) => {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{employee ? employee.name : 'Nowy pracownik'}</DialogTitle>
-          <DialogDescription>Urlopy i jednorazowe niedostępności dodajesz w Kalendarzu.</DialogDescription>
+          <DialogDescription>Szablon tygodnia służy do wypełniania grafiku miesięcznego. Urlopy dodajesz w Kalendarzu.</DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="details">
           <TabsList className="w-full">
             <TabsTrigger value="details">Dane</TabsTrigger>
-            <TabsTrigger value="schedule">Grafik</TabsTrigger>
+            <TabsTrigger value="schedule">Szablon tygodnia</TabsTrigger>
             <TabsTrigger value="services">Usługi</TabsTrigger>
           </TabsList>
 

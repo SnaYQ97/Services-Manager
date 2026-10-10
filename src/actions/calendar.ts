@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
 import { plural } from '@/lib/format';
 import { dateOnlyToDb, salonDay, timeToMinutes } from '@/lib/time';
+import { PUBLISHED } from '@/lib/availability';
 import { BookingStatus } from '../../generated/prisma';
 
 export async function getCalendarDay(date: string) {
@@ -16,7 +17,8 @@ export async function getCalendarDay(date: string) {
     orderBy: { name: 'asc' },
     include: {
       services: { select: { serviceId: true } },
-      workingHours: { where: { weekday: day.weekday }, orderBy: { startMinute: 'asc' } },
+      // godziny pracy z opublikowanego grafiku miesięcznego (szkic nie jest pokazywany)
+      shifts: { where: { date: dateOnlyToDb(date), scheduleMonth: PUBLISHED } },
       scheduleExceptions: { where: { date: dateOnlyToDb(date) } },
       bookings: {
         where: {
@@ -34,7 +36,7 @@ export async function getCalendarDay(date: string) {
     id: employee.id,
     name: employee.name,
     serviceIds: employee.services.map(({ serviceId }) => serviceId),
-    workingHours: employee.workingHours.map(({ startMinute, endMinute }) => ({ startMinute, endMinute })),
+    workingHours: employee.shifts.map(({ startMinute, endMinute }) => ({ startMinute, endMinute })),
     exceptions: employee.scheduleExceptions.map(({ id, startMinute, endMinute, reason }) => ({ id, startMinute, endMinute, reason })),
     bookings: employee.bookings.map((b) => ({
       id: b.id,

@@ -9,6 +9,7 @@ const NavLinks = ({ isManager }: { isManager: boolean }) => {
   const links = [
     { href: "/", label: "Usługi" },
     { href: "/calendar", label: "Kalendarz" },
+    { href: "/schedule", label: "Grafik" },
     { href: "/transactions", label: "Transakcje" },
     ...(isManager ? [{ href: "/management", label: "Zarządzanie" }] : []),
   ];

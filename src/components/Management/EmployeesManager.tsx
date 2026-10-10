@@ -15,7 +15,7 @@ import UnlockButton from "./UnlockButton";
 const EmployeesManager = ({ employees, services }: ManagementData) => (
   <div className="flex flex-col gap-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-muted-foreground">Rola, dostęp, grafik tygodniowy i wykonywane usługi.</p>
+      <p className="text-sm text-muted-foreground">Rola, dostęp, szablon tygodnia i wykonywane usługi. Grafik miesięczny układasz w zakładce Grafik.</p>
       <EmployeeDialog services={services} trigger={<Button><Plus />Nowy pracownik</Button>} />
     </div>
 
@@ -45,7 +45,7 @@ const EmployeesManager = ({ employees, services }: ManagementData) => (
               <div className="w-44 text-sm text-muted-foreground tabular-nums">
                 {schedule.length > 0
                   ? schedule.map(({ days, hours }) => <p key={days}>{days} {hours}</p>)
-                  : <p>Brak grafiku</p>}
+                  : <p>Brak szablonu</p>}
               </div>
               <p className="w-20 text-sm text-muted-foreground">
                 {employee.serviceIds.length} {plural(employee.serviceIds.length, ['usługa', 'usługi', 'usług'])}

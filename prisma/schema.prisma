@@ -25,14 +25,14 @@ model Service {
 }
 
 model Transaction {
-  id            String              @id @default(cuid()) @db.VarChar(30)
-  createdAt     DateTime            @default(now()) @db.Timestamptz(6)
-  totalAmount   Decimal             @db.Decimal(10, 2)
-  paymentType   PaymentType
-  services      PurchasedService[]
-  bookings      Booking[]
-  employee      Employee            @relation(fields: [employeeId], references: [id])
-  employeeId    String              @db.VarChar(30) // pracownik, który przyjął płatność
+  id          String             @id @default(cuid()) @db.VarChar(30)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(6)
+  totalAmount Decimal            @db.Decimal(10, 2)
+  paymentType PaymentType
+  services    PurchasedService[]
+  bookings    Booking[]
+  employee    Employee           @relation(fields: [employeeId], references: [id])
+  employeeId  String             @db.VarChar(30) // pracownik, który przyjął płatność
 }
 
 model PurchasedService {
@@ -57,6 +57,7 @@ model Employee {
   transactions       Transaction[]
   services           EmployeeService[]
   workingHours       WorkingHours[]
+  shifts             Shift[]
   scheduleExceptions ScheduleException[]
   bookings           Booking[]
 }
@@ -71,12 +72,12 @@ model EmployeeService {
   @@id([employeeId, serviceId])
 }
 
-// Stały grafik tygodniowy; minuty liczone od północy (czas lokalny salonu)
+// Szablon tygodniowy – z niego kierownik generuje grafik miesięczny; minuty od północy (czas salonu)
 model WorkingHours {
   id          String   @id @default(cuid()) @db.VarChar(30)
   employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId  String   @db.VarChar(30)
-  weekday     Int      // 1 = poniedziałek ... 7 = niedziela
+  weekday     Int // 1 = poniedziałek ... 7 = niedziela
   startMinute Int
   endMinute   Int
 
@@ -89,11 +90,35 @@ model ScheduleException {
   employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId  String   @db.VarChar(30)
   date        DateTime @db.Date
-  startMinute Int?     // null = cały dzień niedostępny
+  startMinute Int? // null = cały dzień niedostępny
   endMinute   Int?
   reason      String?  @db.VarChar(255)
 
   @@index([employeeId, date])
+}
+
+// Grafik miesięczny: szkic → publikacja. Wolne terminy liczone są tylko z opublikowanych miesięcy.
+model ScheduleMonth {
+  id          String    @id @default(cuid()) @db.VarChar(30)
+  month       String    @unique @db.Char(7) // "2026-10"
+  publishedAt DateTime? @db.Timestamptz(6) // null = szkic
+  shifts      Shift[]
+}
+
+// Zmiana pracownika w konkretnym dniu (jedno okno na dzień); minuty od północy, czas salonu
+model Shift {
+  id              String        @id @default(cuid()) @db.VarChar(30)
+  scheduleMonth   ScheduleMonth @relation(fields: [scheduleMonthId], references: [id], onDelete: Cascade)
+  scheduleMonthId String        @db.VarChar(30)
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId      String        @db.VarChar(30)
+  date            DateTime      @db.Date
+  startMinute     Int
+  endMinute       Int
+
+  @@unique([employeeId, date])
+  @@index([scheduleMonthId])
+  @@index([date])
 }
 
 model Booking {

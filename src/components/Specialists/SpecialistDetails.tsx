@@ -47,11 +47,11 @@ const SpecialistDetails = ({ specialist, serviceId, saved }: Props) => {
         <p className="font-medium">{specialist.name}</p>
       </div>
       <dl className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
-        <dt className="text-muted-foreground">Grafik</dt>
+        <dt className="text-muted-foreground">Szablon tygodnia</dt>
         <dd className="tabular-nums">
           {schedule.length > 0
             ? schedule.map(({ days, hours }) => <p key={days}>{days} {hours}</p>)
-            : <p className="text-destructive">Brak grafiku – nie pojawi się w terminach</p>}
+            : <p className="text-muted-foreground">brak szablonu</p>}
         </dd>
 
         <dt className="text-muted-foreground">Nieobecności</dt>

@@ -2,7 +2,7 @@ import 'server-only';
 import { DateTime } from 'luxon';
 import { prisma } from '@/lib/prisma';
 import { BookingStatus, Prisma } from '../../generated/prisma';
-import { dateOnlyToDb, salonDay, SLOT_STEP_MIN } from '@/lib/time';
+import { dateOnlyToDb, dbToDateOnly, salonDay, SLOT_STEP_MIN } from '@/lib/time';
 
 type Db = typeof prisma | Prisma.TransactionClient;
 
@@ -17,9 +17,11 @@ export interface Slot extends Interval {
 
 const overlaps = (aStart: number, aEnd: number, bStart: number, bEnd: number) => aStart < bEnd && bStart < aEnd;
 
+export const PUBLISHED = { publishedAt: { not: null } } satisfies Prisma.ScheduleMonthWhereInput;
+
 /**
  * Wolne terminy rozpoczęcia usługi w danym dniu.
- * Grafik tygodniowy − wyjątki (urlopy) − aktywne rezerwacje − `busy` (np. inne pozycje koszyka tego klienta).
+ * Opublikowany grafik miesięczny − wyjątki (urlopy) − aktywne rezerwacje − `busy` (np. inne pozycje koszyka tego klienta).
  * `employeeId` = null oznacza dowolnego specjalistę wykonującego usługę.
  */
 export async function getFreeSlots(
@@ -35,8 +37,9 @@ export async function getFreeSlots(
   if (candidates.length === 0) return [];
 
   const day = salonDay(date);
-  const [workingHours, exceptions, bookings] = await Promise.all([
-    db.workingHours.findMany({ where: { employeeId: { in: candidates }, weekday: day.weekday } }),
+  const [shifts, exceptions, bookings] = await Promise.all([
+    // szkic grafiku nie daje terminów – liczy się tylko opublikowany miesiąc
+    db.shift.findMany({ where: { employeeId: { in: candidates }, date: dateOnlyToDb(date), scheduleMonth: PUBLISHED } }),
     db.scheduleException.findMany({ where: { employeeId: { in: candidates }, date: dateOnlyToDb(date) } }),
     db.booking.findMany({
       where: {
@@ -52,7 +55,7 @@ export async function getFreeSlots(
   const busyMs = busy.map((b) => [Date.parse(b.startAt), Date.parse(b.endAt)]);
   const slots = new Map<number, Slot>();
 
-  for (const window of workingHours) {
+  for (const window of shifts) {
     const employeeExceptions = exceptions.filter((e) => e.employeeId === window.employeeId);
     if (employeeExceptions.some((e) => e.startMinute === null)) continue; // cały dzień wolny
 
@@ -83,24 +86,27 @@ export async function getFreeSlots(
   return [...slots.entries()].sort(([a], [b]) => a - b).map(([, slot]) => slot);
 }
 
-/** Pierwszy dzień (od `fromDate` włącznie), w którym jest wolny termin. Bez limitu z góry – kończymy po roku szukania. */
+/** Pierwszy dzień (od `fromDate` włącznie) z wolnym terminem. Sprawdzamy tylko dni ze zmianami w opublikowanym grafiku. */
 export async function findNextFreeDate(
   db: Db,
   params: { serviceId: string; fromDate: string; employeeId: string | null; busy?: Interval[] },
 ): Promise<string | null> {
-  const hasSchedule = await db.workingHours.count({
+  const shiftDays = await db.shift.findMany({
     where: {
+      date: { gte: dateOnlyToDb(params.fromDate) },
+      scheduleMonth: PUBLISHED,
       employee: { services: { some: { serviceId: params.serviceId } } },
       ...(params.employeeId ? { employeeId: params.employeeId } : {}),
     },
+    select: { date: true },
+    distinct: ['date'],
+    orderBy: { date: 'asc' },
   });
-  if (!hasSchedule) return null;
 
-  let day = salonDay(params.fromDate);
-  for (let i = 0; i < 366; i++, day = day.plus({ days: 1 })) {
-    const date = day.toISODate()!;
-    const slots = await getFreeSlots(db, { ...params, date });
-    if (slots.length > 0) return date;
+  for (const { date } of shiftDays) {
+    const day = dbToDateOnly(date);
+    const slots = await getFreeSlots(db, { ...params, date: day });
+    if (slots.length > 0) return day;
   }
   return null;
 }

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatPhone } from "@/lib/format";
-import { formatDayLong, formatTime, minutesToTime, SALON_TZ, salonDay, salonToday, SLOT_STEP_MIN } from "@/lib/time";
+import { formatDayLong, formatMonth, formatTime, minutesToTime, SALON_TZ, salonDay, salonToday, SLOT_STEP_MIN } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import BookSlotDialog, { BookingTarget } from "./BookSlotDialog";
 import ExceptionDialog from "./ExceptionDialog";
@@ -23,6 +23,7 @@ interface Props {
   employees: CalendarEmployee[];
   services: BookableService[];
   isManager: boolean;
+  schedulePublished: boolean;
 }
 
 const PX_PER_MIN = 1.1;
@@ -30,7 +31,7 @@ const COLUMN_MIN_WIDTH = 176;
 
 const overlaps = (aStart: number, aEnd: number, bStart: number, bEnd: number) => aStart < bEnd && bStart < aEnd;
 
-const CalendarDay = ({ date, employees, services, isManager }: Props) => {
+const CalendarDay = ({ date, employees, services, isManager, schedulePublished }: Props) => {
   const router = useRouter();
   const day = salonDay(date);
   const today = salonToday();
@@ -124,6 +125,19 @@ const CalendarDay = ({ date, employees, services, isManager }: Props) => {
           );
         })}
       </nav>
+
+      {!schedulePublished && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3 text-sm">
+          <span className="text-muted-foreground">
+            Grafik na {formatMonth(date.slice(0, 7))} nie jest opublikowany – w tym miesiącu nie ma wolnych terminów.
+          </span>
+          {isManager && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/schedule?month=${date.slice(0, 7)}`}>Ułóż grafik</Link>
+            </Button>
+          )}
+        </div>
+      )}
 
       {allExceptions.length > 0 && (
         <div className="flex flex-wrap gap-2">

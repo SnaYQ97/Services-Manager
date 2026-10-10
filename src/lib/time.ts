@@ -44,3 +44,22 @@ export const formatDayLong = (date: string): string => {
 
 /** Krótkie nazwy dni do podsumowań grafiku */
 export const WEEKDAYS_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
+
+export const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** Bieżący miesiąc w strefie salonu: "2026-10" */
+export const salonMonth = (): string => salonToday().slice(0, 7);
+
+/** Pierwszy dzień miesiąca, pierwszy dzień następnego i liczba dni */
+export const monthBounds = (month: string) => {
+  const first = DateTime.fromISO(`${month}-01`, { zone: SALON_TZ }).startOf('day');
+  return { first, next: first.plus({ months: 1 }), days: first.daysInMonth! };
+};
+
+/** "2026-10" -> "październik 2026" (mianownik, LLLL) */
+export const formatMonth = (month: string): string =>
+  monthBounds(month).first.setLocale('pl').toFormat('LLLL yyyy');
+
+/** 540 -> "9", 510 -> "8:30" – do wąskich komórek grafiku */
+export const shortTime = (minutes: number): string =>
+  minutes % 60 === 0 ? String(minutes / 60) : minutesToTime(minutes).replace(/^0/, '');
