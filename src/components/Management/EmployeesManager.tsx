@@ -10,6 +10,7 @@ import { initials, summarizeSchedule } from "@/lib/schedule";
 import { formatTime } from "@/lib/time";
 import { Role } from "../../../generated/prisma";
 import EmployeeDialog from "./EmployeeDialog";
+import UnlockButton from "./UnlockButton";
 
 const EmployeesManager = ({ employees, services }: ManagementData) => (
   <div className="flex flex-col gap-4">
@@ -33,7 +34,10 @@ const EmployeesManager = ({ employees, services }: ManagementData) => (
                   {employee.role === Role.MANAGER && <Badge variant="secondary">Kierownik</Badge>}
                   {!employee.hasPassword && <Badge variant="outline" className="text-muted-foreground">Bez dostępu</Badge>}
                   {employee.lockedUntil && (
-                    <Badge variant="outline" className="text-destructive">Zablokowane do {formatTime(employee.lockedUntil)}</Badge>
+                    <>
+                      <Badge variant="outline" className="text-destructive">Zablokowane do {formatTime(employee.lockedUntil)}</Badge>
+                      <UnlockButton employeeId={employee.id} name={employee.name} />
+                    </>
                   )}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">{employee.email}</p>

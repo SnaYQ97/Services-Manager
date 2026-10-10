@@ -165,3 +165,11 @@ export async function saveService(input: ServiceInput): Promise<ServiceSaveResul
   revalidatePath('/', 'layout');
   return { ok: true, id: serviceId, warning: warnings.length ? warnings.join(' ') : null };
 }
+
+/** Zdjęcie blokady logowania (po zbyt wielu błędnych hasłach) bez zmiany hasła */
+export async function unlockEmployee(employeeId: string): Promise<SaveResult> {
+  await requireManager();
+  await prisma.employee.update({ where: { id: employeeId }, data: { failedLogins: 0, lockedUntil: null } });
+  revalidatePath('/management/employees');
+  return { ok: true };
+}
