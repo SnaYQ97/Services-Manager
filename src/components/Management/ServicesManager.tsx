@@ -1,94 +1,113 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { ManagementData, saveService } from "@/actions/management";
+import { useEffect, useRef, useState } from "react";
+import { ChevronRight, Plus } from "lucide-react";
+import { ManagementData } from "@/actions/management";
+import type { SpecialistOverview } from "@/lib/specialists";
+import SpecialistAvatar from "@/components/Specialists/SpecialistAvatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import ServiceEditor from "./ServiceEditor";
 
-type Employee = ManagementData['employees'][number];
 type Service = ManagementData['services'][number];
 
-const NEW_SERVICE: Service = { id: '', name: '', price: 0, durationMin: 60, employeeIds: [] };
+interface Props {
+  services: Service[];
+  specialists: SpecialistOverview[];
+}
 
-const ServiceRow = ({ service, employees, onDone }: { service: Service; employees: Employee[]; onDone?: () => void }) => {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [name, setName] = useState(service.name);
-  const [price, setPrice] = useState(String(service.price));
-  const [durationMin, setDurationMin] = useState(String(service.durationMin));
-  const [employeeIds, setEmployeeIds] = useState(service.employeeIds);
-  const [message, setMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
+const NEW = 'new';
 
-  const toggleEmployee = (id: string) =>
-    setEmployeeIds(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
+const ServicesManager = ({ services, specialists }: Props) => {
+  // id wybranej usługi, 'new' dla nowej, null = panel zamknięty
+  const [selected, setSelected] = useState<string | null>(null);
+  // nowa usługa po zapisie: przełącz panel dopiero, gdy pojawi się na odświeżonej liście
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const specialistById = new Map(specialists.map(s => [s.id, s]));
+  const selectedService = services.find(s => s.id === selected);
 
-  const handleSave = () => {
-    setMessage(null);
-    startTransition(async () => {
-      const result = await saveService({
-        id: service.id || undefined,
-        name,
-        price: Number(price),
-        durationMin: Number(durationMin),
-        employeeIds,
-      });
-      if (!result.ok) {
-        setMessage({ type: 'error', text: result.error });
-        return;
-      }
-      setMessage({ type: 'info', text: 'Zapisano.' });
-      router.refresh();
-      onDone?.();
-    });
-  };
+  useEffect(() => {
+    if (pendingId && services.some(s => s.id === pendingId)) {
+      setSelected(pendingId);
+      setPendingId(null);
+    }
+  }, [services, pendingId]);
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-3 text-sm">
-      <div className="flex flex-wrap gap-3 items-center">
-        <input className="border border-gray-200 rounded-md px-2 py-1 font-semibold flex-auto" placeholder="Nazwa usługi" value={name} onChange={e => setName(e.target.value)} />
-        <label className="flex items-center gap-1">
-          Cena $
-          <input type="number" min={0} step={0.01} className="border border-gray-200 rounded-md px-2 py-1 w-24" value={price} onChange={e => setPrice(e.target.value)} />
-        </label>
-        <label className="flex items-center gap-1">
-          Czas
-          <input type="number" min={15} step={15} className="border border-gray-200 rounded-md px-2 py-1 w-20" value={durationMin} onChange={e => setDurationMin(e.target.value)} />
-          min
-        </label>
-      </div>
-      <div className="flex flex-wrap gap-4 items-center">
-        <span className="font-medium text-gray-800">Specjaliści:</span>
-        {employees.map(employee => (
-          <label key={employee.id} className="flex items-center gap-1">
-            <input type="checkbox" checked={employeeIds.includes(employee.id)} onChange={() => toggleEmployee(employee.id)} />
-            {employee.name}
-          </label>
-        ))}
-      </div>
-      <div className="flex items-center gap-3">
-        <button onClick={handleSave} disabled={isPending} className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40">
-          {service.id ? 'Zapisz' : 'Dodaj usługę'}
-        </button>
-        {message && <span className={message.type === 'error' ? 'text-red-600' : 'text-green-700'}>{message.text}</span>}
-      </div>
-    </div>
-  );
-};
-
-const ServicesManager = ({ employees, services }: ManagementData) => {
-  const [adding, setAdding] = useState(false);
+  // na telefonie panel jest pod listą – przewiń do niego po wyborze
+  useEffect(() => {
+    if (selected && window.matchMedia('(max-width: 1023px)').matches) {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selected]);
 
   return (
     <div className="flex flex-col gap-4">
-      {services.map(service => (
-        <ServiceRow key={service.id} service={service} employees={employees} />
-      ))}
-      {adding ? (
-        <ServiceRow service={NEW_SERVICE} employees={employees} onDone={() => setAdding(false)} />
-      ) : (
-        <button onClick={() => setAdding(true)} className="self-start px-3 py-1.5 rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50">
-          + Nowa usługa
-        </button>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Wybierz usługę, aby ją edytować i zobaczyć grafik przypisanych specjalistów.</p>
+        <Button onClick={() => setSelected(NEW)}><Plus />Nowa usługa</Button>
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
+        {services.length === 0 ? (
+          <Card className="items-center py-10 text-sm text-muted-foreground">Brak usług. Dodaj pierwszą.</Card>
+        ) : (
+          <Card className="gap-0 overflow-hidden py-0">
+            <ul className="divide-y">
+              {services.map(service => (
+                <li key={service.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(service.id)}
+                    aria-current={selected === service.id ? 'true' : undefined}
+                    className={cn(
+                      'flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/50',
+                      selected === service.id && 'bg-muted',
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 font-medium">
+                        <span className="truncate">{service.name}</span>
+                        {service.employeeIds.length === 0 && <Badge variant="outline" className="text-destructive">Brak specjalisty</Badge>}
+                      </span>
+                      <span className="block text-sm text-muted-foreground tabular-nums">
+                        {service.durationMin} min · {formatMoney(service.price)}
+                      </span>
+                    </span>
+                    <span className="flex -space-x-1.5">
+                      {service.employeeIds.map(id => {
+                        const specialist = specialistById.get(id);
+                        return specialist && <SpecialistAvatar key={id} name={specialist.name} />;
+                      })}
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        <div ref={editorRef} className="scroll-mt-20">
+          {selected ? (
+            <ServiceEditor
+              // osobny stan formularza dla każdej usługi
+              key={selected}
+              service={selectedService}
+              specialists={specialists}
+              onClose={() => setSelected(null)}
+              onSaved={id => selected === NEW && setPendingId(id)}
+            />
+          ) : (
+            <Card className="hidden items-center justify-center py-16 text-sm text-muted-foreground lg:flex">
+              Wybierz usługę z listy
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

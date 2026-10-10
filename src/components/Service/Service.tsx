@@ -1,47 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import ServicePanel from "./components/ServicePanel";
+import ServicePanel from "./ServicePanel";
 import Cart from "@/components/Cart/Cart";
-import { CartItem } from "@/components/Cart/types";
-import { BookableService, getBookableServices } from "@/actions/booking";
+import { useCart } from "@/components/Cart/CartProvider";
+import PageHeader from "@/components/PageHeader";
+import type { BookableService } from "@/actions/booking";
+import type { SpecialistOverview } from "@/lib/specialists";
 import { salonToday } from "@/lib/time";
+import Link from "next/link";
+import { Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const ServiceManagement = () => {
-  const [services, setServices] = useState<BookableService[]>([]);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+interface Props {
+  services: BookableService[];
+  specialists: SpecialistOverview[];
+  isManager: boolean;
+}
 
-  useEffect(() => {
-    getBookableServices()
-      .then(setServices)
-      .catch((error) => console.error('Error fetching services:', error));
-  }, []);
+const ServiceManagement = ({ services, specialists, isManager }: Props) => {
+  const { items, add, removeLastOf } = useCart();
 
-  const handleAdd = (service: BookableService) => {
-    setCartItems(prev => [
-      ...prev,
-      { key: crypto.randomUUID(), service, employeeId: null, date: salonToday(), slot: null },
-    ]);
-  };
-
-  const handleRemoveLast = (serviceId: string) => {
-    setCartItems(prev => {
-      const index = prev.findLastIndex(item => item.service.id === serviceId);
-      return index === -1 ? prev : prev.filter((_, i) => i !== index);
-    });
-  };
-
-  const counts = cartItems.reduce<Record<string, number>>((acc, item) => {
-    acc[item.service.id] = (acc[item.service.id] || 0) + 1;
+  const counts = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.serviceId] = (acc[item.serviceId] || 0) + 1;
     return acc;
   }, {});
 
   return (
-    <div className="container mx-auto p-2">
-      <h1 className="text-3xl font-bold mb-8">Services Management</h1>
-      <div className="flex gap-6 flex-wrap md:flex-nowrap items-start">
-        <ServicePanel services={services} counts={counts} onAdd={handleAdd} onRemove={handleRemoveLast} />
-        <Cart items={cartItems} setItems={setCartItems} />
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Usługi"
+        description="Dodaj usługi do koszyka, wybierz terminy i przyjmij płatność."
+        actions={isManager && (
+          <Button asChild variant="outline">
+            <Link href="/management/services"><Settings2 />Zarządzaj usługami</Link>
+          </Button>
+        )}
+      />
+      <div className="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <ServicePanel
+          services={services}
+          specialists={specialists}
+          counts={counts}
+          onAdd={(service) => add({ serviceId: service.id, employeeId: null, date: salonToday(), slot: null })}
+          onRemove={removeLastOf}
+        />
+        <Cart services={services} />
       </div>
     </div>
   )

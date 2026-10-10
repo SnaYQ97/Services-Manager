@@ -1,5 +1,3 @@
-import type { BookableService } from "@/actions/booking";
-
 export interface SelectedSlot {
   startAt: string;
   endAt: string;
@@ -8,7 +6,7 @@ export interface SelectedSlot {
 
 export interface CartItem {
   key: string;
-  service: BookableService;
+  serviceId: string;
   employeeId: string | null; // wybór recepcji; null = dowolny wolny specjalista
   date: string;              // yyyy-MM-dd w strefie salonu
   slot: SelectedSlot | null;

@@ -1,145 +1,66 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { ManagementData, saveEmployee } from "@/actions/management";
-import { minutesToTime, WEEKDAYS } from "@/lib/time";
+import { Pencil, Plus } from "lucide-react";
+import { ManagementData } from "@/actions/management";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { plural } from "@/lib/format";
+import { initials, summarizeSchedule } from "@/lib/schedule";
+import { formatTime } from "@/lib/time";
 import { Role } from "../../../generated/prisma";
+import EmployeeDialog from "./EmployeeDialog";
 
-type Employee = ManagementData['employees'][number];
-type Service = ManagementData['services'][number];
-
-interface DaySchedule {
-  enabled: boolean;
-  start: string;
-  end: string;
-}
-
-const NEW_EMPLOYEE: Employee = { id: '', name: '', email: '', role: Role.EMPLOYEE, hasPassword: false, serviceIds: [], workingHours: [] };
-
-const toWeek = (workingHours: Employee['workingHours']): DaySchedule[] =>
-  WEEKDAYS.map((_, i) => {
-    // edytor obsługuje jedno okno na dzień
-    const window = workingHours.find(w => w.weekday === i + 1);
-    return window
-      ? { enabled: true, start: minutesToTime(window.startMinute), end: minutesToTime(window.endMinute) }
-      : { enabled: false, start: '09:00', end: '17:00' };
-  });
-
-const EmployeeCard = ({ employee, services, onDone }: { employee: Employee; services: Service[]; onDone?: () => void }) => {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [name, setName] = useState(employee.name);
-  const [email, setEmail] = useState(employee.email);
-  const [role, setRole] = useState(employee.role);
-  const [password, setPassword] = useState('');
-  const [serviceIds, setServiceIds] = useState(employee.serviceIds);
-  const [week, setWeek] = useState(() => toWeek(employee.workingHours));
-  const [message, setMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
-
-  const updateDay = (index: number, patch: Partial<DaySchedule>) =>
-    setWeek(prev => prev.map((d, i) => i === index ? { ...d, ...patch } : d));
-
-  const toggleService = (id: string) =>
-    setServiceIds(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
-
-  const handleSave = () => {
-    setMessage(null);
-    startTransition(async () => {
-      const result = await saveEmployee({
-        id: employee.id || undefined,
-        name,
-        email,
-        role,
-        password,
-        serviceIds,
-        workingHours: week.flatMap((d, i) => d.enabled ? [{ weekday: i + 1, start: d.start, end: d.end }] : []),
-      });
-      if (!result.ok) {
-        setMessage({ type: 'error', text: result.error });
-        return;
-      }
-      setMessage({ type: 'info', text: 'Zapisano.' });
-      setPassword('');
-      router.refresh();
-      onDone?.();
-    });
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-4 text-sm">
-      <div className="flex flex-wrap gap-3">
-        <input className="border border-gray-200 rounded-md px-2 py-1 font-semibold flex-auto" placeholder="Imię i nazwisko" value={name} onChange={e => setName(e.target.value)} />
-        <input className="border border-gray-200 rounded-md px-2 py-1 flex-auto" placeholder="E-mail" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        <select className="border border-gray-200 rounded-md px-2 py-1" value={role} onChange={e => setRole(e.target.value as Role)}>
-          <option value={Role.EMPLOYEE}>Pracownik</option>
-          <option value={Role.MANAGER}>Kierownik</option>
-        </select>
-        <input
-          className="border border-gray-200 rounded-md px-2 py-1"
-          type="password"
-          autoComplete="new-password"
-          placeholder={employee.hasPassword ? 'Nowe hasło (puste = bez zmian)' : 'Hasło (brak = bez dostępu)'}
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-6">
-        <div className="flex flex-col gap-1">
-          <p className="font-medium text-gray-800">Grafik tygodniowy</p>
-          {week.map((d, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <label className="flex items-center gap-1 w-32">
-                <input type="checkbox" checked={d.enabled} onChange={e => updateDay(i, { enabled: e.target.checked })} />
-                {WEEKDAYS[i]}
-              </label>
-              <input type="time" step={900} disabled={!d.enabled} className="border border-gray-200 rounded-md px-1 disabled:opacity-40" value={d.start} onChange={e => updateDay(i, { start: e.target.value })} />
-              –
-              <input type="time" step={900} disabled={!d.enabled} className="border border-gray-200 rounded-md px-1 disabled:opacity-40" value={d.end} onChange={e => updateDay(i, { end: e.target.value })} />
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <p className="font-medium text-gray-800">Wykonywane usługi</p>
-          {services.map(service => (
-            <label key={service.id} className="flex items-center gap-1">
-              <input type="checkbox" checked={serviceIds.includes(service.id)} onChange={() => toggleService(service.id)} />
-              {service.name}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <button onClick={handleSave} disabled={isPending} className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40">
-          {employee.id ? 'Zapisz' : 'Dodaj pracownika'}
-        </button>
-        {message && <span className={message.type === 'error' ? 'text-red-600' : 'text-green-700'}>{message.text}</span>}
-      </div>
+const EmployeesManager = ({ employees, services }: ManagementData) => (
+  <div className="flex flex-col gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground">Rola, dostęp, grafik tygodniowy i wykonywane usługi.</p>
+      <EmployeeDialog services={services} trigger={<Button><Plus />Nowy pracownik</Button>} />
     </div>
-  );
-};
 
-const EmployeesManager = ({ employees, services }: ManagementData) => {
-  const [adding, setAdding] = useState(false);
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-gray-500">Urlopy i jednorazowe niedostępności dodajesz w Kalendarzu.</p>
-      {employees.map(employee => (
-        <EmployeeCard key={employee.id} employee={employee} services={services} />
-      ))}
-      {adding ? (
-        <EmployeeCard employee={NEW_EMPLOYEE} services={services} onDone={() => setAdding(false)} />
-      ) : (
-        <button onClick={() => setAdding(true)} className="self-start px-3 py-1.5 rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50">
-          + Nowy pracownik
-        </button>
-      )}
-    </div>
-  );
-};
+    <Card className="gap-0 overflow-hidden py-0">
+      <ul className="divide-y">
+        {employees.map(employee => {
+          const schedule = summarizeSchedule(employee.workingHours);
+          return (
+            <li key={employee.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                {initials(employee.name)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2 font-medium">
+                  {employee.name}
+                  {employee.role === Role.MANAGER && <Badge variant="secondary">Kierownik</Badge>}
+                  {!employee.hasPassword && <Badge variant="outline" className="text-muted-foreground">Bez dostępu</Badge>}
+                  {employee.lockedUntil && (
+                    <Badge variant="outline" className="text-destructive">Zablokowane do {formatTime(employee.lockedUntil)}</Badge>
+                  )}
+                </p>
+                <p className="truncate text-sm text-muted-foreground">{employee.email}</p>
+              </div>
+              <div className="w-44 text-sm text-muted-foreground tabular-nums">
+                {schedule.length > 0
+                  ? schedule.map(({ days, hours }) => <p key={days}>{days} {hours}</p>)
+                  : <p>Brak grafiku</p>}
+              </div>
+              <p className="w-20 text-sm text-muted-foreground">
+                {employee.serviceIds.length} {plural(employee.serviceIds.length, ['usługa', 'usługi', 'usług'])}
+              </p>
+              <EmployeeDialog
+                employee={employee}
+                services={services}
+                trigger={
+                  <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edytuj: ${employee.name}`}>
+                    <Pencil />
+                  </Button>
+                }
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  </div>
+);
 
 export default EmployeesManager;

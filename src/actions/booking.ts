@@ -4,17 +4,27 @@ import { revalidatePath } from 'next/cache';
 import { DateTime } from 'luxon';
 import { prisma } from '@/lib/prisma';
 import { findNextFreeDate, getFreeSlots, Interval } from '@/lib/availability';
+import { normalizePhone } from '@/lib/format';
 import { getCurrentEmployee } from '@/lib/session';
-import { SALON_TZ } from '@/lib/time';
+import { SALON_TZ, salonToday } from '@/lib/time';
 import { PaymentType, Prisma } from '../../generated/prisma';
 
+/** Usługi z wykonującymi je specjalistami; kwoty jako number, bo Decimal nie przechodzi do komponentów klienta */
 export async function getBookableServices() {
-  return prisma.service.findMany({
+  const services = await prisma.service.findMany({
     orderBy: { name: 'asc' },
-    include: {
-      employees: { include: { employee: { select: { id: true, name: true } } } },
-    },
+    include: { employees: { include: { employee: { select: { id: true, name: true } } } } },
   });
+
+  return services.map((service) => ({
+    id: service.id,
+    name: service.name,
+    price: service.price.toNumber(),
+    durationMin: service.durationMin,
+    employees: service.employees
+      .map(({ employee }) => employee)
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl')),
+  }));
 }
 
 export type BookableService = Awaited<ReturnType<typeof getBookableServices>>[number];
@@ -25,6 +35,14 @@ export async function getSlots(params: { serviceId: string; date: string; employ
 
 export async function getNextFreeDate(params: { serviceId: string; fromDate: string; employeeId: string | null; busy: Interval[] }) {
   return findNextFreeDate(prisma, params);
+}
+
+/** Najbliższy wolny termin usługi u konkretnego specjalisty (karta po najechaniu na awatar) */
+export async function getNextAvailability({ serviceId, employeeId }: { serviceId: string; employeeId: string }) {
+  const date = await findNextFreeDate(prisma, { serviceId, fromDate: salonToday(), employeeId });
+  if (!date) return null;
+  const [first] = await getFreeSlots(prisma, { serviceId, date, employeeId });
+  return first ? { startAt: first.startAt, endAt: first.endAt } : null;
 }
 
 export interface ReservationInput {
@@ -42,13 +60,14 @@ class ReservationError extends Error {}
 /** Płatność + rezerwacje w jednej transakcji bazy; każdy termin jest weryfikowany ponownie po stronie serwera. */
 export async function createReservation(input: ReservationInput): Promise<ReservationResult> {
   const clientName = input.clientName.trim();
-  const clientPhone = input.clientPhone.trim();
-  if (!clientName || !clientPhone) return { ok: false, error: 'Podaj imię i telefon klienta.' };
+  const clientPhone = normalizePhone(input.clientPhone);
+  if (!clientName) return { ok: false, error: 'Podaj imię i nazwisko klienta.' };
+  if (!clientPhone) return { ok: false, error: 'Podaj poprawny numer telefonu (9 cyfr, opcjonalnie +48).' };
   if (input.items.length === 0) return { ok: false, error: 'Koszyk jest pusty.' };
   if (!Object.values(PaymentType).includes(input.paymentType)) return { ok: false, error: 'Wybierz formę płatności.' };
 
   const seller = await getCurrentEmployee();
-  if (!seller) return { ok: false, error: 'Brak zalogowanego pracownika.' };
+  if (!seller) return { ok: false, error: 'Sesja wygasła – zaloguj się ponownie.' };
 
   try {
     const transaction = await prisma.$transaction(async (tx) => {
@@ -86,7 +105,7 @@ export async function createReservation(input: ReservationInput): Promise<Reserv
 
       return tx.transaction.create({
         data: {
-          totalAmount: bookings.reduce((sum, b) => sum + b.service.price, 0),
+          totalAmount: bookings.reduce((sum, b) => sum.add(b.service.price), new Prisma.Decimal(0)),
           paymentType: input.paymentType,
           employeeId: seller.id,
           services: {

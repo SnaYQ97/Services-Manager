@@ -2,27 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/management/employees", label: "Pracownicy i grafik" },
   { href: "/management/services", label: "Usługi" },
+  { href: "/management/employees", label: "Pracownicy i grafik" },
 ];
 
 const ManagementNav = () => {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-2 border-b border-gray-200">
-      {tabs.map(tab => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          className={`px-3 py-2 -mb-px border-b-2 ${
-            pathname.startsWith(tab.href) ? 'border-blue-600 text-blue-600 font-semibold' : 'border-transparent text-gray-600'
-          }`}
-        >
-          {tab.label}
-        </Link>
-      ))}
+    <nav className="inline-flex w-fit rounded-lg bg-muted p-1">
+      {tabs.map(tab => {
+        const active = pathname.startsWith(tab.href);
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm transition-colors",
+              active ? "bg-background font-medium text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 };

@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import TopBar from "@/components/TopBar/TopBar";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
@@ -27,8 +27,8 @@ export default function RootLayout({
     <html lang="pl">
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <TopBar />
         {children}
+        <Toaster position="top-center" />
       </body>
     </html>
   );

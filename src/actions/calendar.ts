@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
+import { plural } from '@/lib/format';
 import { dateOnlyToDb, salonDay, timeToMinutes } from '@/lib/time';
 import { BookingStatus } from '../../generated/prisma';
 
@@ -14,6 +15,7 @@ export async function getCalendarDay(date: string) {
     where: { OR: [{ services: { some: {} } }, { workingHours: { some: {} } }] },
     orderBy: { name: 'asc' },
     include: {
+      services: { select: { serviceId: true } },
       workingHours: { where: { weekday: day.weekday }, orderBy: { startMinute: 'asc' } },
       scheduleExceptions: { where: { date: dateOnlyToDb(date) } },
       bookings: {
@@ -31,6 +33,7 @@ export async function getCalendarDay(date: string) {
   return employees.map((employee) => ({
     id: employee.id,
     name: employee.name,
+    serviceIds: employee.services.map(({ serviceId }) => serviceId),
     workingHours: employee.workingHours.map(({ startMinute, endMinute }) => ({ startMinute, endMinute })),
     exceptions: employee.scheduleExceptions.map(({ id, startMinute, endMinute, reason }) => ({ id, startMinute, endMinute, reason })),
     bookings: employee.bookings.map((b) => ({
@@ -57,10 +60,11 @@ export interface ExceptionInput {
   reason?: string;
 }
 
-export type ExceptionResult = { ok: true; conflictingBookings: number } | { ok: false; error: string };
+export type ExceptionResult = { ok: true; warning: string | null } | { ok: false; error: string };
 
 export async function addScheduleException(input: ExceptionInput): Promise<ExceptionResult> {
   await requireManager();
+  if (!salonDay(input.date).isValid) return { ok: false, error: 'Wybierz datę.' };
 
   const startMinute = input.allDay ? null : timeToMinutes(input.startTime ?? '');
   const endMinute = input.allDay ? null : timeToMinutes(input.endTime ?? '');
@@ -92,7 +96,12 @@ export async function addScheduleException(input: ExceptionInput): Promise<Excep
   });
 
   revalidatePath('/calendar');
-  return { ok: true, conflictingBookings };
+  return {
+    ok: true,
+    warning: conflictingBookings > 0
+      ? `${conflictingBookings} ${plural(conflictingBookings, ['rezerwacja koliduje', 'rezerwacje kolidują', 'rezerwacji koliduje'])} z tą niedostępnością – trzeba je przełożyć.`
+      : null,
+  };
 }
 
 export async function deleteScheduleException(id: string) {

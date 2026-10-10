@@ -1,10 +1,11 @@
 import LoginForm from "@/components/Account/LoginForm";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string }> }) {
-  const { callbackUrl } = await searchParams;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ callbackUrl?: string; changed?: string }> }) {
+  const { callbackUrl, changed } = await searchParams;
   return (
-    <div className="container mx-auto p-2 flex justify-center">
-      <LoginForm callbackUrl={callbackUrl ?? '/'} />
-    </div>
+    <main className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted/40 px-4 py-10">
+      <p className="text-lg font-semibold tracking-tight">Service Manager</p>
+      <LoginForm callbackUrl={callbackUrl ?? '/'} passwordChanged={changed === '1'} />
+    </main>
   );
 }

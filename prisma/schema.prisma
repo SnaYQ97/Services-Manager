@@ -17,7 +17,7 @@ datasource db {
 model Service {
   id          String             @id @default(cuid()) @db.VarChar(30)
   name        String             @db.VarChar(100)
-  price       Float              @db.Real
+  price       Decimal            @db.Decimal(10, 2)
   durationMin Int                @default(60) // czas trwania wizyty w minutach
   purchases   PurchasedService[]
   employees   EmployeeService[]
@@ -26,8 +26,8 @@ model Service {
 
 model Transaction {
   id            String              @id @default(cuid()) @db.VarChar(30)
-  createdAt     DateTime            @default(now()) @db.Timestamp(6)
-  totalAmount   Float               @db.Real
+  createdAt     DateTime            @default(now()) @db.Timestamptz(6)
+  totalAmount   Decimal             @db.Decimal(10, 2)
   paymentType   PaymentType
   services      PurchasedService[]
   bookings      Booking[]
@@ -42,7 +42,7 @@ model PurchasedService {
   transaction   Transaction @relation(fields: [transactionId], references: [id])
   transactionId String      @db.VarChar(30)
   quantity      Int         @default(1)
-  unitPrice     Float       // snapshot ceny z momentu zakupu
+  unitPrice     Decimal     @db.Decimal(10, 2) // snapshot ceny z momentu zakupu
 }
 
 model Employee {
@@ -51,6 +51,9 @@ model Employee {
   email              String              @unique
   passwordHash       String?             @db.VarChar(100) // bcrypt; null = nie może się zalogować
   role               Role                @default(EMPLOYEE)
+  failedLogins       Int                 @default(0) // nieudane logowania z rzędu
+  lockedUntil        DateTime?           @db.Timestamptz(6) // blokada logowania po zbyt wielu próbach
+  sessionVersion     Int                 @default(0) // zmiana unieważnia wydane sesje
   transactions       Transaction[]
   services           EmployeeService[]
   workingHours       WorkingHours[]
@@ -95,7 +98,7 @@ model ScheduleException {
 
 model Booking {
   id            String        @id @default(cuid()) @db.VarChar(30)
-  createdAt     DateTime      @default(now()) @db.Timestamp(6)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
   startAt       DateTime      @db.Timestamptz(6)
   endAt         DateTime      @db.Timestamptz(6)
   status        BookingStatus @default(CONFIRMED)

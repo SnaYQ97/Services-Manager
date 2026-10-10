@@ -4,140 +4,255 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DateTime } from "luxon";
-import { addScheduleException, CalendarEmployee, deleteScheduleException } from "@/actions/calendar";
-import { formatTime, minutesToTime, SALON_TZ, salonDay, salonToday } from "@/lib/time";
+import { CalendarOff, ChevronLeft, ChevronRight, TriangleAlert, X } from "lucide-react";
+import { toast } from "sonner";
+import type { BookableService } from "@/actions/booking";
+import { CalendarEmployee, deleteScheduleException } from "@/actions/calendar";
+import PageHeader from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { formatPhone } from "@/lib/format";
+import { formatDayLong, formatTime, minutesToTime, SALON_TZ, salonDay, salonToday, SLOT_STEP_MIN } from "@/lib/time";
+import { cn } from "@/lib/utils";
+import BookSlotDialog, { BookingTarget } from "./BookSlotDialog";
+import ExceptionDialog from "./ExceptionDialog";
 
 interface Props {
   date: string;
   employees: CalendarEmployee[];
+  services: BookableService[];
   isManager: boolean;
 }
 
-const PX_PER_MIN = 1.2;
+const PX_PER_MIN = 1.1;
+const COLUMN_MIN_WIDTH = 176;
 
-const CalendarDay = ({ date, employees, isManager }: Props) => {
+const overlaps = (aStart: number, aEnd: number, bStart: number, bEnd: number) => aStart < bEnd && bStart < aEnd;
+
+const CalendarDay = ({ date, employees, services, isManager }: Props) => {
+  const router = useRouter();
   const day = salonDay(date);
-  const weekStart = day.startOf('week');
   const today = salonToday();
+  const weekStart = day.startOf('week');
+  const [hover, setHover] = useState<{ employeeId: string; minute: number } | null>(null);
+  const [bookingTarget, setBookingTarget] = useState<BookingTarget | null>(null);
 
-  // zakres godzin siatki: od najwcześniejszego do najpóźniejszego grafiku (domyślnie 8–18)
+  const minuteOfDay = (iso: string) => {
+    const t = DateTime.fromISO(iso).setZone(SALON_TZ);
+    return t.hasSame(day, 'day') ? t.hour * 60 + t.minute : (t < day ? 0 : 24 * 60);
+  };
+
+  // zakres siatki: od najwcześniejszego do najpóźniejszego grafiku/wizyty (co najmniej 8–18)
   const windows = employees.flatMap(e => e.workingHours);
-  const bookingMinutes = employees.flatMap(e => e.bookings.flatMap(b => [b.startAt, b.endAt]))
-    .map(iso => { const t = DateTime.fromISO(iso).setZone(SALON_TZ); return t.hour * 60 + t.minute; });
+  const bookingMinutes = employees.flatMap(e => e.bookings.flatMap(b => [minuteOfDay(b.startAt), minuteOfDay(b.endAt)]));
   const gridStart = Math.floor(Math.min(480, ...windows.map(w => w.startMinute), ...bookingMinutes) / 60) * 60;
   const gridEnd = Math.ceil(Math.max(1080, ...windows.map(w => w.endMinute), ...bookingMinutes) / 60) * 60;
   const hours = Array.from({ length: (gridEnd - gridStart) / 60 }, (_, i) => gridStart + i * 60);
   const top = (minute: number) => (minute - gridStart) * PX_PER_MIN;
-  const minuteOf = (iso: string) => {
-    const t = DateTime.fromISO(iso).setZone(SALON_TZ);
-    return t.hasSame(day, 'day') ? t.hour * 60 + t.minute : (t < day ? gridStart : gridEnd);
+
+  const exceptionRange = (ex: CalendarEmployee['exceptions'][number]) =>
+    [ex.startMinute ?? 0, ex.endMinute ?? 24 * 60] as const;
+  const isWorkingAt = (employee: CalendarEmployee, minute: number) =>
+    employee.workingHours.some(w => minute >= w.startMinute && minute < w.endMinute)
+    && !employee.exceptions.some(ex => { const [s, e] = exceptionRange(ex); return minute >= s && minute < e; });
+
+  const minuteFromEvent = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return gridStart + Math.floor((e.clientY - rect.top) / PX_PER_MIN / SLOT_STEP_MIN) * SLOT_STEP_MIN;
   };
 
+  const handleColumnClick = (employee: CalendarEmployee, e: React.MouseEvent<HTMLDivElement>) => {
+    const minute = minuteFromEvent(e);
+    if (!isWorkingAt(employee, minute)) return;
+    if (day.set({ hour: Math.floor(minute / 60), minute: minute % 60 }) < DateTime.now()) {
+      toast.info('Ten termin już minął.');
+      return;
+    }
+    setBookingTarget({ employee, minute });
+  };
+
+  const allExceptions = employees.flatMap(employee => employee.exceptions.map(ex => ({ ...ex, employeeName: employee.name })));
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold text-gray-900">Kalendarz</h1>
-        <div className="flex items-center gap-1 text-sm">
-          <Link href={`/calendar?date=${weekStart.minus({ weeks: 1 }).toISODate()}`} className="px-2 py-1 rounded-md border border-gray-200">‹</Link>
-          {Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })).map(d => {
-            const iso = d.toISODate()!;
-            return (
-              <Link
-                key={iso}
-                href={`/calendar?date=${iso}`}
-                className={`px-3 py-1 rounded-md border text-center ${
-                  iso === date ? 'bg-blue-600 border-blue-600 text-white' : iso === today ? 'border-blue-400' : 'border-gray-200'
-                }`}
-              >
-                <span className="block text-xs">{d.setLocale('pl').toFormat('ccc')}</span>
-                {d.toFormat('dd.MM')}
-              </Link>
-            );
-          })}
-          <Link href={`/calendar?date=${weekStart.plus({ weeks: 1 }).toISODate()}`} className="px-2 py-1 rounded-md border border-gray-200">›</Link>
-          <Link href={`/calendar?date=${today}`} className="ml-2 px-2 py-1 rounded-md border border-gray-200">Dziś</Link>
-        </div>
-      </div>
-
-      <p className="text-gray-600">{day.setLocale('pl').toFormat('cccc, d LLLL yyyy')}</p>
-
-      {employees.length === 0 ? (
-        <p className="text-gray-500">Brak specjalistów z grafikiem.</p>
-      ) : (
-        <div className="flex bg-white rounded-lg shadow-sm overflow-x-auto">
-          <div className="w-14 shrink-0 border-r border-gray-100">
-            <div className="h-10" />
-            <div className="relative" style={{ height: (gridEnd - gridStart) * PX_PER_MIN }}>
-              {hours.map(h => (
-                <span key={h} className="absolute right-2 -translate-y-2 text-xs text-gray-400" style={{ top: top(h) }}>
-                  {minutesToTime(h)}
-                </span>
-              ))}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Kalendarz"
+        description={<span className="first-letter:uppercase">{formatDayLong(date)}</span>}
+        actions={
+          <>
+            <div className="flex items-center gap-1">
+              <Button asChild variant="outline" size="icon" aria-label="Poprzedni dzień">
+                <Link href={`/calendar?date=${day.minus({ days: 1 }).toISODate()}`}><ChevronLeft /></Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={`/calendar?date=${today}`}>Dziś</Link>
+              </Button>
+              <Button asChild variant="outline" size="icon" aria-label="Następny dzień">
+                <Link href={`/calendar?date=${day.plus({ days: 1 }).toISODate()}`}><ChevronRight /></Link>
+              </Button>
+              <Input
+                type="date"
+                className="w-auto"
+                value={date}
+                onChange={e => e.target.value && router.push(`/calendar?date=${e.target.value}`)}
+                aria-label="Wybierz dzień"
+              />
             </div>
-          </div>
+            {isManager && employees.length > 0 && <ExceptionDialog date={date} employees={employees} />}
+          </>
+        }
+      />
 
-          {employees.map(employee => (
-            <div key={employee.id} className="flex-1 min-w-48 border-r border-gray-100 last:border-r-0">
-              <div className="h-10 flex items-center justify-center font-semibold text-gray-800 border-b border-gray-100">
-                {employee.name}
-              </div>
-              <div className="relative bg-gray-100" style={{ height: (gridEnd - gridStart) * PX_PER_MIN }}>
-                {hours.map(h => (
-                  <div key={h} className="absolute inset-x-0 border-t border-gray-200/70" style={{ top: top(h) }} />
-                ))}
+      <nav className="grid grid-cols-7 gap-1" aria-label="Dni tygodnia">
+        {Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i })).map(d => {
+          const iso = d.toISODate()!;
+          return (
+            <Link
+              key={iso}
+              href={`/calendar?date=${iso}`}
+              aria-current={iso === date ? 'date' : undefined}
+              className={cn(
+                'rounded-md py-1.5 text-center text-sm transition-colors',
+                iso === date ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                iso === today && iso !== date && 'font-semibold text-brand',
+              )}
+            >
+              <span className="block text-xs opacity-70">{d.setLocale('pl').toFormat('ccc')}</span>
+              <span className="tabular-nums">{d.toFormat('d')}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
-                {employee.workingHours.map(w => (
-                  <div
-                    key={w.startMinute}
-                    className="absolute inset-x-0 bg-white"
-                    style={{ top: top(w.startMinute), height: (w.endMinute - w.startMinute) * PX_PER_MIN }}
-                  />
-                ))}
-
-                {employee.exceptions.map(ex => {
-                  const start = ex.startMinute ?? gridStart;
-                  const end = ex.endMinute ?? gridEnd;
-                  return (
-                    <div
-                      key={ex.id}
-                      className="absolute inset-x-0 bg-red-50 border-y border-red-200 text-xs text-red-700 p-1 flex justify-between items-start"
-                      style={{
-                        top: top(start),
-                        height: (end - start) * PX_PER_MIN,
-                        backgroundImage: 'repeating-linear-gradient(45deg, transparent 0 8px, rgb(254 202 202 / .5) 8px 16px)',
-                      }}
-                    >
-                      <span>
-                        {ex.reason || 'Niedostępny'}
-                        {ex.startMinute !== null && ` (${minutesToTime(ex.startMinute)}–${minutesToTime(ex.endMinute!)})`}
-                      </span>
-                      {isManager && <DeleteExceptionButton id={ex.id} />}
-                    </div>
-                  );
-                })}
-
-                {employee.bookings.map(b => {
-                  const start = minuteOf(b.startAt);
-                  const end = minuteOf(b.endAt);
-                  return (
-                    <div
-                      key={b.id}
-                      title={[b.serviceName, `${b.clientName}, tel. ${b.clientPhone}`, b.note, `Transakcja #${b.transactionId}`].filter(Boolean).join('\n')}
-                      className="absolute inset-x-1 rounded-md bg-blue-100 border-l-4 border-blue-500 px-2 py-1 text-xs text-blue-900 overflow-hidden"
-                      style={{ top: top(start), height: (end - start) * PX_PER_MIN }}
-                    >
-                      <p className="font-semibold">{formatTime(b.startAt)}–{formatTime(b.endAt)} {b.serviceName}</p>
-                      <p>{b.clientName} · {b.clientPhone}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+      {allExceptions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {allExceptions.map(ex => (
+            <span key={ex.id} className="inline-flex items-center gap-1.5 rounded-full border border-destructive/20 bg-destructive/5 py-1 pr-1.5 pl-3 text-xs text-destructive">
+              <CalendarOff className="size-3.5" />
+              {ex.employeeName} · {ex.startMinute === null ? 'cały dzień' : `${minutesToTime(ex.startMinute)}–${minutesToTime(ex.endMinute!)}`}
+              {ex.reason && ` · ${ex.reason}`}
+              {isManager && <DeleteExceptionButton id={ex.id} />}
+            </span>
           ))}
         </div>
       )}
 
-      {isManager && employees.length > 0 && <ExceptionForm date={date} employees={employees} />}
+      {employees.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Brak specjalistów z grafikiem. Kierownik może go ustawić w Zarządzaniu.</p>
+      ) : (
+        <Card className="gap-0 overflow-hidden py-0">
+          <div className="overflow-x-auto">
+            <div className="flex" style={{ minWidth: 56 + employees.length * COLUMN_MIN_WIDTH }}>
+              <div className="w-14 shrink-0 border-r">
+                <div className="h-11 border-b" />
+                <div className="relative" style={{ height: (gridEnd - gridStart) * PX_PER_MIN }}>
+                  {hours.map(h => (
+                    <span key={h} className="absolute right-2 -translate-y-2 text-[11px] text-muted-foreground tabular-nums" style={{ top: top(h) }}>
+                      {minutesToTime(h)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {employees.map(employee => (
+                <div key={employee.id} className="min-w-0 flex-1 border-r last:border-r-0">
+                  <div className="flex h-11 items-center justify-center border-b px-2 text-sm font-medium">
+                    <span className="truncate">{employee.name}</span>
+                  </div>
+                  <div
+                    className="relative bg-muted/50"
+                    style={{ height: (gridEnd - gridStart) * PX_PER_MIN }}
+                    onClick={e => handleColumnClick(employee, e)}
+                    onMouseMove={e => {
+                      const minute = minuteFromEvent(e);
+                      setHover(isWorkingAt(employee, minute) ? { employeeId: employee.id, minute } : null);
+                    }}
+                    onMouseLeave={() => setHover(null)}
+                  >
+                    {employee.workingHours.map(w => (
+                      <div
+                        key={w.startMinute}
+                        className="absolute inset-x-0 cursor-pointer bg-background"
+                        style={{ top: top(w.startMinute), height: (w.endMinute - w.startMinute) * PX_PER_MIN }}
+                      />
+                    ))}
+
+                    {hours.map(h => (
+                      <div key={h} className="pointer-events-none absolute inset-x-0 border-t border-border/60" style={{ top: top(h) }} />
+                    ))}
+
+                    {employee.exceptions.map(ex => {
+                      const [start, end] = exceptionRange(ex);
+                      const from = Math.max(start, gridStart);
+                      const to = Math.min(end, gridEnd);
+                      return (
+                        <div
+                          key={ex.id}
+                          className="pointer-events-none absolute inset-x-0 bg-destructive/5"
+                          style={{
+                            top: top(from),
+                            height: (to - from) * PX_PER_MIN,
+                            backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in oklab, var(--destructive) 14%, transparent) 6px 12px)',
+                          }}
+                        />
+                      );
+                    })}
+
+                    {hover?.employeeId === employee.id && (
+                      <div
+                        className="pointer-events-none absolute inset-x-1 rounded-md border border-dashed border-brand/60 px-2 text-[11px] leading-4 text-brand"
+                        style={{ top: top(hover.minute), height: SLOT_STEP_MIN * PX_PER_MIN }}
+                      >
+                        + {minutesToTime(hover.minute)}
+                      </div>
+                    )}
+
+                    {employee.bookings.map(b => {
+                      const start = minuteOfDay(b.startAt);
+                      const end = minuteOfDay(b.endAt);
+                      const conflict = employee.exceptions.some(ex => {
+                        const [s, e] = exceptionRange(ex);
+                        return overlaps(start, end, s, e);
+                      });
+                      return (
+                        <div
+                          key={b.id}
+                          onClick={e => e.stopPropagation()}
+                          onMouseMove={e => e.stopPropagation()}
+                          title={[conflict && 'Koliduje z niedostępnością', b.serviceName, `${b.clientName}, tel. ${formatPhone(b.clientPhone)}`, b.note, `Transakcja #${b.transactionId}`].filter(Boolean).join('\n')}
+                          className={cn(
+                            'absolute inset-x-1 z-10 overflow-hidden rounded-md border-l-2 px-2 py-1 text-xs leading-snug',
+                            conflict
+                              ? 'border-destructive text-destructive'
+                              : 'border-brand bg-brand-soft text-brand-soft-foreground',
+                          )}
+                          style={{
+                            top: top(start) + 1,
+                            height: (end - start) * PX_PER_MIN - 2,
+                            // nieprzezroczyste tło, żeby kreskowanie niedostępności nie prześwitywało
+                            ...(conflict && { background: 'color-mix(in oklab, var(--destructive) 10%, var(--background))' }),
+                          }}
+                        >
+                          <p className="font-medium tabular-nums">
+                            {conflict && <TriangleAlert className="mr-1 inline size-3 -translate-y-px" aria-label="Koliduje z niedostępnością" />}
+                            {formatTime(b.startAt)}–{formatTime(b.endAt)} {b.serviceName}
+                          </p>
+                          <p className="truncate">{b.clientName} · {formatPhone(b.clientPhone)}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <p className="text-xs text-muted-foreground">Kliknij wolne miejsce w kolumnie specjalisty, aby dodać wizytę do koszyka.</p>
+
+      <BookSlotDialog date={date} target={bookingTarget} services={services} onClose={() => setBookingTarget(null)} />
     </div>
   );
 };
@@ -147,73 +262,19 @@ const DeleteExceptionButton = ({ id }: { id: string }) => {
   const [isPending, startTransition] = useTransition();
   return (
     <button
-      title="Usuń wyjątek"
+      type="button"
+      aria-label="Usuń niedostępność"
+      title="Usuń niedostępność"
       disabled={isPending}
-      onClick={() => startTransition(async () => { await deleteScheduleException(id); router.refresh(); })}
-      className="px-1 text-red-700 hover:text-red-900"
+      onClick={() => startTransition(async () => {
+        await deleteScheduleException(id);
+        toast.success('Usunięto niedostępność.');
+        router.refresh();
+      })}
+      className="rounded-full p-0.5 hover:bg-destructive/10 disabled:opacity-50"
     >
-      ×
+      <X className="size-3.5" />
     </button>
-  );
-};
-
-const ExceptionForm = ({ date, employees }: { date: string; employees: CalendarEmployee[] }) => {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [employeeId, setEmployeeId] = useState(employees[0].id);
-  const [exceptionDate, setExceptionDate] = useState(date);
-  const [allDay, setAllDay] = useState(true);
-  const [startTime, setStartTime] = useState('12:00');
-  const [endTime, setEndTime] = useState('14:00');
-  const [reason, setReason] = useState('');
-  const [message, setMessage] = useState<{ type: 'error' | 'info'; text: string } | null>(null);
-
-  const handleSubmit = () => {
-    setMessage(null);
-    startTransition(async () => {
-      const result = await addScheduleException({ employeeId, date: exceptionDate, allDay, startTime, endTime, reason });
-      if (!result.ok) {
-        setMessage({ type: 'error', text: result.error });
-        return;
-      }
-      setReason('');
-      setMessage(result.conflictingBookings > 0
-        ? { type: 'error', text: `Wyjątek dodany. Uwaga: ${result.conflictingBookings} istniejąca rezerwacja(e) koliduje – trzeba ją przełożyć.` }
-        : { type: 'info', text: 'Wyjątek dodany.' });
-      router.refresh();
-    });
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-3 text-sm">
-      <h2 className="font-semibold text-gray-800">Urlop / niedostępność (kierownik)</h2>
-      <div className="flex flex-wrap gap-3 items-center">
-        <select className="border border-gray-200 rounded-md px-2 py-1" value={employeeId} onChange={e => setEmployeeId(e.target.value)}>
-          {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </select>
-        <input type="date" className="border border-gray-200 rounded-md px-2 py-1" value={exceptionDate} onChange={e => setExceptionDate(e.target.value)} />
-        <label className="flex items-center gap-1">
-          <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />
-          Cały dzień
-        </label>
-        {!allDay && (
-          <>
-            <input type="time" step={900} className="border border-gray-200 rounded-md px-2 py-1" value={startTime} onChange={e => setStartTime(e.target.value)} />
-            –
-            <input type="time" step={900} className="border border-gray-200 rounded-md px-2 py-1" value={endTime} onChange={e => setEndTime(e.target.value)} />
-          </>
-        )}
-        <input className="border border-gray-200 rounded-md px-2 py-1 flex-auto" placeholder="Powód (np. urlop)" value={reason} onChange={e => setReason(e.target.value)} />
-        <button
-          onClick={handleSubmit}
-          disabled={isPending || !exceptionDate}
-          className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
-        >
-          Dodaj
-        </button>
-      </div>
-      {message && <p className={message.type === 'error' ? 'text-red-600' : 'text-green-700'}>{message.text}</p>}
-    </div>
   );
 };
 

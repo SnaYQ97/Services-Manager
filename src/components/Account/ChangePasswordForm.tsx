@@ -1,26 +1,52 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import { changeOwnPassword } from "@/actions/account";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
+// Pola kontrolowane – po błędzie formularz nie czyści wpisanych wartości
 const ChangePasswordForm = () => {
-  const [result, formAction, isPending] = useActionState(changeOwnPassword, null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [repeatPassword, setRepeatPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    // przy sukcesie akcja wylogowuje i przekierowuje na logowanie
+    startTransition(async () => setError(await changeOwnPassword({ currentPassword, newPassword, repeatPassword })));
+  };
 
   return (
-    <form action={formAction} className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-3 max-w-sm text-sm">
-      <h2 className="font-semibold text-gray-800">Zmiana hasła</h2>
-      <input name="currentPassword" type="password" required autoComplete="current-password" placeholder="Obecne hasło" className="border border-gray-200 rounded-md px-3 py-2" />
-      <input name="newPassword" type="password" required autoComplete="new-password" placeholder="Nowe hasło" className="border border-gray-200 rounded-md px-3 py-2" />
-      <input name="repeatPassword" type="password" required autoComplete="new-password" placeholder="Powtórz nowe hasło" className="border border-gray-200 rounded-md px-3 py-2" />
-      {result && (
-        <p className={result.ok ? 'text-green-700' : 'text-red-600'}>
-          {result.ok ? 'Hasło zmienione.' : result.error}
-        </p>
-      )}
-      <button disabled={isPending} className="self-start px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40">
-        Zmień hasło
-      </button>
-    </form>
+    <Card className="max-w-md">
+      <CardHeader>
+        <CardTitle>Zmiana hasła</CardTitle>
+        <CardDescription>Po zmianie hasła wszystkie sesje zostaną wylogowane, także ta.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="current-password">Obecne hasło</Label>
+            <Input id="current-password" type="password" required autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password">Nowe hasło</Label>
+            <Input id="new-password" type="password" required minLength={8} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="repeat-password">Powtórz nowe hasło</Label>
+            <Input id="repeat-password" type="password" required autoComplete="new-password" value={repeatPassword} onChange={e => setRepeatPassword(e.target.value)} />
+          </div>
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          <Button type="submit" disabled={isPending}>{isPending ? 'Zapisywanie…' : 'Zmień hasło'}</Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

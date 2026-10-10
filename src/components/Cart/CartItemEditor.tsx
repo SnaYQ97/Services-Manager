@@ -1,27 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DateTime } from "luxon";
+import { Check, ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react";
 import { getNextFreeDate, getSlots } from "@/actions/booking";
+import type { BookableService } from "@/actions/booking";
 import type { Interval, Slot } from "@/lib/availability";
-import { formatTime, salonDay, salonToday } from "@/lib/time";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney } from "@/lib/format";
+import { formatDayLong, formatTime, salonDay, salonToday } from "@/lib/time";
+import { cn } from "@/lib/utils";
 import { CartItem } from "./types";
 
 interface Props {
   item: CartItem;
+  service: BookableService;
   busy: Interval[];        // terminy pozostałych pozycji koszyka
   refreshToken: number;    // zmiana wymusza ponowne pobranie slotów
   onChange: (patch: Partial<CartItem>) => void;
   onRemove: () => void;
 }
 
-const CartItemEditor = ({ item, busy, refreshToken, onChange, onRemove }: Props) => {
-  const { service } = item;
+const ANY_EMPLOYEE = "any";
+
+const CartItemEditor = ({ item, service, busy, refreshToken, onChange, onRemove }: Props) => {
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [noFreeDate, setNoFreeDate] = useState(false);
   const busyKey = JSON.stringify(busy);
-  const employeeName = (id: string) => service.employees.find(({ employee }) => employee.id === id)?.employee.name ?? '';
+  const today = salonToday();
+  const employeeName = (id: string) => service.employees.find((employee) => employee.id === id)?.name ?? "";
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +41,7 @@ const CartItemEditor = ({ item, busy, refreshToken, onChange, onRemove }: Props)
       .then((result) => {
         if (cancelled) return;
         setSlots(result);
-        // wybrany termin przestał być dostępny (zmiana dnia, specjalisty lub koliduje z inną pozycją)
+        // wybrany termin przestał być dostępny (zmiana dnia, specjalisty, upływ czasu lub kolizja z inną pozycją)
         if (item.slot && !result.some((s) => s.startAt === item.slot!.startAt && s.employeeIds.includes(item.slot!.employeeId))) {
           onChange({ slot: null });
         }
@@ -47,106 +58,125 @@ const CartItemEditor = ({ item, busy, refreshToken, onChange, onRemove }: Props)
     if (date) onChange({ date });
   };
 
-  // nowa pozycja: od razu przejdź do najbliższego dnia z wolnym terminem
+  // nowa pozycja (lub zmiana specjalisty): od razu najbliższy dzień z wolnym terminem;
+  // pozycja z koszyka zapisanego wcześniej nie może wskazywać na miniony dzień
   useEffect(() => {
-    if (!item.slot) jumpToNextFree(item.date);
+    if (!item.slot) jumpToNextFree(item.date < today ? today : item.date);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.employeeId]);
 
   const shiftDate = (days: number) => {
     const date = salonDay(item.date).plus({ days }).toISODate()!;
-    if (date >= salonToday()) onChange({ date });
+    if (date >= today) onChange({ date });
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-start gap-2">
-        <div>
-          <p className="font-semibold text-gray-800">{service.name}</p>
-          <p className="text-sm text-gray-500">${service.price.toFixed(2)} · {service.durationMin} min</p>
+    <Card className="gap-4 py-4">
+      <div className="flex items-start justify-between gap-3 px-4">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{service.name}</p>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {service.durationMin} min · {formatMoney(service.price)}
+          </p>
         </div>
-        <button onClick={onRemove} className="text-sm text-red-600 hover:text-red-800">Usuń</button>
+        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={onRemove} aria-label={`Usuń z koszyka: ${service.name}`}>
+          <X />
+        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center text-sm">
-        <label className="flex items-center gap-2">
-          Specjalista:
-          <select
-            className="border border-gray-200 rounded-md px-2 py-1"
-            value={item.employeeId ?? ''}
-            onChange={(e) => onChange({ employeeId: e.target.value || null, slot: null })}
-          >
-            <option value="">Dowolny wolny</option>
-            {service.employees.map(({ employee }) => (
-              <option key={employee.id} value={employee.id}>{employee.name}</option>
+      <div className="flex flex-wrap items-center gap-2 px-4">
+        <Select
+          value={item.employeeId ?? ANY_EMPLOYEE}
+          onValueChange={(value) => onChange({ employeeId: value === ANY_EMPLOYEE ? null : value, slot: null })}
+        >
+          <SelectTrigger size="sm" className="w-44" aria-label="Specjalista">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ANY_EMPLOYEE}>Dowolny specjalista</SelectItem>
+            {service.employees.map((employee) => (
+              <SelectItem key={employee.id} value={employee.id}>{employee.name}</SelectItem>
             ))}
-          </select>
-        </label>
+          </SelectContent>
+        </Select>
 
         <div className="flex items-center gap-1">
-          <button onClick={() => shiftDate(-1)} disabled={item.date <= salonToday()} className="px-2 py-1 rounded-md border border-gray-200 disabled:opacity-40">‹</button>
-          <input
+          <Button variant="outline" size="icon" className="size-8" onClick={() => shiftDate(-1)} disabled={item.date <= today} aria-label="Poprzedni dzień">
+            <ChevronLeft />
+          </Button>
+          <Input
             type="date"
-            className="border border-gray-200 rounded-md px-2 py-1"
-            min={salonToday()}
+            className="h-8 w-auto"
+            min={today}
             value={item.date}
             onChange={(e) => e.target.value && onChange({ date: e.target.value })}
+            aria-label="Dzień wizyty"
           />
-          <button onClick={() => shiftDate(1)} className="px-2 py-1 rounded-md border border-gray-200">›</button>
+          <Button variant="outline" size="icon" className="size-8" onClick={() => shiftDate(1)} aria-label="Następny dzień">
+            <ChevronRight />
+          </Button>
         </div>
 
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
           onClick={() => jumpToNextFree(salonDay(item.date).plus({ days: 1 }).toISODate()!)}
           disabled={searching}
-          className="px-2 py-1 rounded-md border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
         >
-          {searching ? 'Szukam…' : 'Następny wolny dzień'}
-        </button>
+          <SkipForward />
+          {searching ? "Szukam…" : "Następny wolny dzień"}
+        </Button>
       </div>
 
-      <p className="text-sm text-gray-600">
-        {DateTime.fromISO(item.date).setLocale('pl').toFormat('cccc, d LLLL yyyy')}
-      </p>
-
-      {slots === null ? (
-        <p className="text-sm text-gray-400">Ładowanie terminów…</p>
-      ) : slots.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          {noFreeDate ? 'Brak wolnych terminów u wybranego specjalisty.' : 'Brak wolnych terminów tego dnia.'}
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {slots.map((slot) => {
-            const selected = item.slot?.startAt === slot.startAt;
-            return (
-              <button
-                key={slot.startAt}
-                title={slot.employeeIds.map(employeeName).join(', ')}
-                onClick={() => onChange({
-                  slot: {
-                    startAt: slot.startAt,
-                    endAt: slot.endAt,
-                    // zostaw wcześniej przypisanego specjalistę, jeśli nadal jest wolny
-                    employeeId: selected && slot.employeeIds.includes(item.slot!.employeeId) ? item.slot!.employeeId : slot.employeeIds[0],
-                  },
-                })}
-                className={`text-sm px-2.5 py-1 rounded-md border ${
-                  selected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-200 hover:border-blue-400'
-                }`}
-              >
-                {formatTime(slot.startAt)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {item.slot && (
-        <p className="text-sm text-green-700">
-          Wybrano: {formatTime(item.slot.startAt)}–{formatTime(item.slot.endAt)}, {employeeName(item.slot.employeeId)}
-        </p>
-      )}
-    </div>
+      <div className="space-y-2 px-4">
+        <p className="text-sm text-muted-foreground first-letter:uppercase">{formatDayLong(item.date)}</p>
+        {slots === null ? (
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-8 w-14" />)}
+          </div>
+        ) : slots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {noFreeDate ? "Brak wolnych terminów u wybranego specjalisty." : "Brak wolnych terminów tego dnia."}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5" role="listbox" aria-label="Wolne godziny">
+            {slots.map((slot) => {
+              const selected = item.slot?.startAt === slot.startAt;
+              return (
+                <button
+                  key={slot.startAt}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  title={slot.employeeIds.map(employeeName).join(", ")}
+                  onClick={() => onChange({
+                    slot: {
+                      startAt: slot.startAt,
+                      endAt: slot.endAt,
+                      // zostaw wcześniej przypisanego specjalistę, jeśli nadal jest wolny
+                      employeeId: selected && slot.employeeIds.includes(item.slot!.employeeId) ? item.slot!.employeeId : slot.employeeIds[0],
+                    },
+                  })}
+                  className={cn(
+                    "h-8 rounded-md border px-2.5 text-sm tabular-nums transition-colors",
+                    selected ? "border-brand bg-brand text-brand-foreground" : "hover:border-brand hover:text-brand",
+                  )}
+                >
+                  {formatTime(slot.startAt)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {item.slot && (
+          <p className="flex items-center gap-1.5 text-sm text-brand">
+            <Check className="size-4" />
+            {formatTime(item.slot.startAt)}–{formatTime(item.slot.endAt)} · {employeeName(item.slot.employeeId)}
+          </p>
+        )}
+      </div>
+    </Card>
   );
 };
 

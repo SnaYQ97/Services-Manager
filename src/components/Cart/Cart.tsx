@@ -1,40 +1,68 @@
 "use client";
 
-import { Dispatch, SetStateAction, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { Banknote, CheckCircle2, CreditCard, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
 import { createReservation } from "@/actions/booking";
+import type { BookableService } from "@/actions/booking";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { PaymentType } from "../../../generated/prisma";
-import { formatDate, formatTime } from "@/lib/time";
+import { formatMoney, normalizePhone, plural } from "@/lib/format";
+import { formatDate, formatTime, salonDay } from "@/lib/time";
+import { useCart } from "./CartProvider";
 import CartItemEditor from "./CartItemEditor";
-import { CartItem } from "./types";
-
-interface Props {
-  items: CartItem[];
-  setItems: Dispatch<SetStateAction<CartItem[]>>;
-}
 
 interface Confirmation {
   transactionId: string;
   clientName: string;
+  firstDate: string;
   lines: string[];
 }
 
-const Cart = ({ items, setItems }: Props) => {
+const PAYMENT_OPTIONS = [
+  { value: PaymentType.CARD, label: "Karta", icon: CreditCard },
+  { value: PaymentType.CASH, label: "Gotówka", icon: Banknote },
+];
+
+const Cart = ({ services }: { services: BookableService[] }) => {
+  const { items, hydrated, update, remove, clear } = useCart();
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [note, setNote] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>(PaymentType.CARD);
   const [error, setError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const confirmationRef = useRef<HTMLDivElement>(null);
 
-  const updateItem = (key: string, patch: Partial<CartItem>) =>
-    setItems(prev => prev.map(item => item.key === key ? { ...item, ...patch } : item));
+  const serviceById = new Map(services.map(service => [service.id, service]));
+  // pozycje zapisane w przeglądarce, których usługa zniknęła albo straciła specjalistów
+  const validItems = items.filter(item => serviceById.get(item.serviceId)?.employees.length);
+  const staleKeys = items.filter(item => !validItems.includes(item)).map(item => item.key).join();
 
-  const total = items.reduce((sum, item) => sum + item.service.price, 0);
-  const allScheduled = items.length > 0 && items.every(item => item.slot);
-  const canSubmit = allScheduled && clientName.trim() !== '' && clientPhone.trim() !== '' && !isPending;
+  useEffect(() => {
+    if (!hydrated || !staleKeys) return;
+    staleKeys.split(',').forEach(remove);
+    toast.info('Usunięto z koszyka usługi, które nie są już dostępne.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, staleKeys]);
+
+  useEffect(() => {
+    if (confirmation) confirmationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [confirmation]);
+
+  const total = validItems.reduce((sum, item) => sum + serviceById.get(item.serviceId)!.price, 0);
+  const allScheduled = validItems.length > 0 && validItems.every(item => item.slot);
+  const phoneValid = normalizePhone(clientPhone) !== null;
+  const canSubmit = allScheduled && clientName.trim() !== '' && phoneValid && !isPending;
 
   const handleSubmit = () => {
     setError(null);
@@ -44,8 +72,8 @@ const Cart = ({ items, setItems }: Props) => {
         clientPhone,
         note,
         paymentType,
-        items: items.map(item => ({
-          serviceId: item.service.id,
+        items: validItems.map(item => ({
+          serviceId: item.serviceId,
           employeeId: item.slot!.employeeId,
           startAt: item.slot!.startAt,
         })),
@@ -57,103 +85,131 @@ const Cart = ({ items, setItems }: Props) => {
         return;
       }
 
+      const scheduled = [...validItems].sort((a, b) => a.slot!.startAt.localeCompare(b.slot!.startAt));
       setConfirmation({
         transactionId: result.transactionId,
-        clientName,
-        lines: items.map(item => `${item.service.name} – ${formatDate(item.slot!.startAt)}, ${formatTime(item.slot!.startAt)}`),
+        clientName: clientName.trim(),
+        firstDate: salonDay(scheduled[0].date).toISODate()!,
+        lines: scheduled.map(item => {
+          const service = serviceById.get(item.serviceId)!;
+          const specialist = service.employees.find(employee => employee.id === item.slot!.employeeId)?.name;
+          return `${formatDate(item.slot!.startAt)}, ${formatTime(item.slot!.startAt)} · ${service.name} · ${specialist}`;
+        }),
       });
-      setItems([]);
+      toast.success('Rezerwacja opłacona', {
+        description: `${clientName.trim()} · ${scheduled.length} ${plural(scheduled.length, ['wizyta', 'wizyty', 'wizyt'])}`,
+      });
+      clear();
       setClientName('');
       setClientPhone('');
+      setPhoneTouched(false);
       setNote('');
     });
   };
 
   return (
-    <section className="flex flex-col gap-4 flex-auto w-full">
-      <h1 className="text-3xl font-bold text-gray-900">Koszyk</h1>
-
+    <section className="flex min-w-0 flex-col gap-4" aria-label="Koszyk">
       {confirmation && (
-        <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
-          <p className="font-semibold">Rezerwacja opłacona – {confirmation.clientName}</p>
-          <ul className="list-disc ml-5 my-2">
+        <div ref={confirmationRef} className="scroll-mt-20 rounded-xl border border-brand/30 bg-brand-soft p-4 text-sm text-brand-soft-foreground">
+          <p className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="size-4" />
+            Rezerwacja opłacona – {confirmation.clientName}
+          </p>
+          <ul className="mt-2 space-y-0.5 pl-6">
             {confirmation.lines.map(line => <li key={line}>{line}</li>)}
           </ul>
-          <Link href="/calendar" className="underline">Zobacz w kalendarzu</Link>
-          {' · '}
-          <Link href="/transactions" className="underline">Transakcja #{confirmation.transactionId}</Link>
+          <div className="mt-3 flex gap-4 pl-6">
+            <Link href={`/calendar?date=${confirmation.firstDate}`} className="underline underline-offset-4">Pokaż w kalendarzu</Link>
+            <Link href="/transactions" className="underline underline-offset-4">Transakcje</Link>
+          </div>
         </div>
       )}
 
-      {items.length === 0 ? (
-        <p className="text-gray-500">Koszyk jest pusty. Dodaj usługę z listy.</p>
+      {!hydrated ? (
+        <Skeleton className="h-40 w-full rounded-xl" />
+      ) : validItems.length === 0 ? (
+        <Card className="items-center gap-2 py-10 text-center">
+          <ShoppingBag className="size-6 text-muted-foreground" />
+          <p className="font-medium">Koszyk jest pusty</p>
+          <p className="text-sm text-muted-foreground">Dodaj usługę z listy albo kliknij wolne miejsce w kalendarzu.</p>
+        </Card>
       ) : (
         <>
-          {items.map(item => (
+          {validItems.map(item => (
             <CartItemEditor
               key={item.key}
               item={item}
-              busy={items
+              service={serviceById.get(item.serviceId)!}
+              busy={validItems
                 .filter(other => other.key !== item.key && other.slot)
                 .map(other => ({ startAt: other.slot!.startAt, endAt: other.slot!.endAt }))}
               refreshToken={refreshToken}
-              onChange={patch => updateItem(item.key, patch)}
-              onRemove={() => setItems(prev => prev.filter(other => other.key !== item.key))}
+              onChange={patch => update(item.key, patch)}
+              onRemove={() => remove(item.key)}
             />
           ))}
 
-          <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col gap-3">
-            <h2 className="font-semibold text-gray-800">Klient i płatność</h2>
-            <div className="flex flex-wrap gap-3">
-              <input
-                className="border border-gray-200 rounded-md px-3 py-2 flex-auto"
-                placeholder="Imię i nazwisko"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-              />
-              <input
-                className="border border-gray-200 rounded-md px-3 py-2 flex-auto"
-                placeholder="Telefon"
-                type="tel"
-                value={clientPhone}
-                onChange={e => setClientPhone(e.target.value)}
-              />
-            </div>
-            <textarea
-              className="border border-gray-200 rounded-md px-3 py-2"
-              placeholder="Notatka (opcjonalnie)"
-              rows={2}
-              value={note}
-              onChange={e => setNote(e.target.value)}
-            />
-            <div className="flex gap-4 text-sm">
-              {[{ value: PaymentType.CARD, label: 'Karta' }, { value: PaymentType.CASH, label: 'Gotówka' }].map(option => (
-                <label key={option.value} className="flex items-center gap-1">
-                  <input
-                    type="radio"
-                    name="paymentType"
-                    checked={paymentType === option.value}
-                    onChange={() => setPaymentType(option.value)}
+          <Card className="gap-4 py-4">
+            <CardHeader className="px-4">
+              <CardTitle>Klient i płatność</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 px-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="client-name">Imię i nazwisko</Label>
+                  <Input id="client-name" value={clientName} onChange={e => setClientName(e.target.value)} autoComplete="off" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="client-phone">Telefon</Label>
+                  <Input
+                    id="client-phone"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="600 100 200"
+                    value={clientPhone}
+                    onChange={e => setClientPhone(e.target.value)}
+                    onBlur={() => setPhoneTouched(true)}
+                    aria-invalid={phoneTouched && !phoneValid}
+                    aria-describedby="client-phone-error"
+                    autoComplete="off"
                   />
-                  {option.label}
-                </label>
-              ))}
-            </div>
+                  {phoneTouched && !phoneValid && (
+                    <p id="client-phone-error" className="text-xs text-destructive">Podaj 9 cyfr, opcjonalnie z +48.</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="client-note">Notatka <span className="font-normal text-muted-foreground">(opcjonalnie)</span></Label>
+                <Textarea id="client-note" rows={2} value={note} onChange={e => setNote(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Forma płatności">
+                {PAYMENT_OPTIONS.map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentType === value}
+                    variant={paymentType === value ? 'default' : 'outline'}
+                    onClick={() => setPaymentType(value)}
+                  >
+                    <Icon />
+                    {label}
+                  </Button>
+                ))}
+              </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {!allScheduled && <p className="text-sm text-gray-500">Wybierz termin dla każdej usługi.</p>}
+              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+              {!allScheduled && <p className="text-sm text-muted-foreground">Wybierz termin dla każdej usługi.</p>}
 
-            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-              <span className="font-semibold">Razem: ${total.toFixed(2)}</span>
-              <button
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <div className="flex items-center justify-between border-t pt-4">
+                <span className="text-sm text-muted-foreground">Razem</span>
+                <span className="text-lg font-semibold tabular-nums">{formatMoney(total)}</span>
+              </div>
+              <Button className="w-full" size="lg" onClick={handleSubmit} disabled={!canSubmit}>
                 {isPending ? 'Zapisywanie…' : 'Zarezerwuj i zapłać'}
-              </button>
-            </div>
-          </div>
+              </Button>
+            </CardContent>
+          </Card>
         </>
       )}
     </section>

@@ -3,9 +3,12 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
+import { plural } from '@/lib/format';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { timeToMinutes } from '@/lib/time';
-import { Prisma, Role } from '../../generated/prisma';
+import { BookingStatus, Prisma, Role } from '../../generated/prisma';
+
+const MAX_PRICE = 99_999_999.99; // DECIMAL(10,2)
 
 export async function getManagementData() {
   await requireManager();
@@ -16,7 +19,9 @@ export async function getManagementData() {
     }),
     prisma.service.findMany({ orderBy: { name: 'asc' }, include: { employees: true } }),
   ]);
+  const now = new Date();
 
+  // tylko proste typy – Decimal nie przechodzi do komponentów klienta
   return {
     employees: employees.map((e) => ({
       id: e.id,
@@ -24,13 +29,14 @@ export async function getManagementData() {
       email: e.email,
       role: e.role,
       hasPassword: e.passwordHash !== null,
+      lockedUntil: e.lockedUntil && e.lockedUntil > now ? e.lockedUntil.toISOString() : null,
       serviceIds: e.services.map((s) => s.serviceId),
       workingHours: e.workingHours.map(({ weekday, startMinute, endMinute }) => ({ weekday, startMinute, endMinute })),
     })),
     services: services.map((s) => ({
       id: s.id,
       name: s.name,
-      price: s.price,
+      price: s.price.toNumber(),
       durationMin: s.durationMin,
       employeeIds: s.employees.map((e) => e.employeeId),
     })),
@@ -78,10 +84,16 @@ export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const data = { name, email, role: input.role, ...(passwordHash ? { passwordHash } : {}) };
+      const data = { name, email, role: input.role };
       const employee = input.id
-        ? await tx.employee.update({ where: { id: input.id }, data })
-        : await tx.employee.create({ data });
+        ? await tx.employee.update({
+            where: { id: input.id },
+            // nowe hasło: wyloguj stare sesje i zdejmij blokadę logowania
+            data: passwordHash
+              ? { ...data, passwordHash, sessionVersion: { increment: 1 }, failedLogins: 0, lockedUntil: null }
+              : data,
+          })
+        : await tx.employee.create({ data: { ...data, passwordHash } });
 
       await tx.employeeService.deleteMany({ where: { employeeId: employee.id } });
       await tx.employeeService.createMany({
@@ -109,17 +121,20 @@ export interface ServiceInput {
   employeeIds: string[];
 }
 
-export async function saveService(input: ServiceInput): Promise<SaveResult> {
+export type ServiceSaveResult = { ok: true; id: string; warning: string | null } | { ok: false; error: string };
+
+export async function saveService(input: ServiceInput): Promise<ServiceSaveResult> {
   await requireManager();
   const name = input.name.trim();
   if (!name) return { ok: false, error: 'Podaj nazwę usługi.' };
-  if (!(input.price >= 0)) return { ok: false, error: 'Cena musi być liczbą nieujemną.' };
+  if (!(input.price >= 0 && input.price <= MAX_PRICE)) return { ok: false, error: 'Podaj poprawną cenę.' };
   if (!Number.isInteger(input.durationMin) || input.durationMin < 15 || input.durationMin % 15 !== 0) {
     return { ok: false, error: 'Czas trwania musi być wielokrotnością 15 minut.' };
   }
 
-  await prisma.$transaction(async (tx) => {
-    const data = { name, price: input.price, durationMin: input.durationMin };
+  const { serviceId, removedIds } = await prisma.$transaction(async (tx) => {
+    const data = { name, price: new Prisma.Decimal(input.price.toFixed(2)), durationMin: input.durationMin };
+    const previous = input.id ? await tx.employeeService.findMany({ where: { serviceId: input.id } }) : [];
     const service = input.id
       ? await tx.service.update({ where: { id: input.id }, data })
       : await tx.service.create({ data });
@@ -128,8 +143,25 @@ export async function saveService(input: ServiceInput): Promise<SaveResult> {
     await tx.employeeService.createMany({
       data: input.employeeIds.map((employeeId) => ({ employeeId, serviceId: service.id })),
     });
+    return {
+      serviceId: service.id,
+      removedIds: previous.map((p) => p.employeeId).filter((id) => !input.employeeIds.includes(id)),
+    };
   });
 
+  // odpięty specjalista zostaje przy już umówionych wizytach – kierownik powinien o tym wiedzieć
+  const futureBookings = removedIds.length
+    ? await prisma.booking.count({
+        where: { serviceId, employeeId: { in: removedIds }, status: BookingStatus.CONFIRMED, startAt: { gt: new Date() } },
+      })
+    : 0;
+  const warnings = [
+    input.employeeIds.length === 0 ? 'Usługa nie ma żadnego specjalisty – nie da się jej zarezerwować.' : null,
+    futureBookings > 0
+      ? `${futureBookings} ${plural(futureBookings, ['przyszła wizyta', 'przyszłe wizyty', 'przyszłych wizyt'])} u odpiętych specjalistów zostaje w kalendarzu.`
+      : null,
+  ].filter(Boolean);
+
   revalidatePath('/', 'layout');
-  return { ok: true };
+  return { ok: true, id: serviceId, warning: warnings.length ? warnings.join(' ') : null };
 }

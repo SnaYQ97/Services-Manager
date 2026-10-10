@@ -1,22 +1,59 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
 import { login } from "@/actions/account";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-const LoginForm = ({ callbackUrl }: { callbackUrl: string }) => {
-  const [error, formAction, isPending] = useActionState(login, null);
+// Pola kontrolowane – po błędnym haśle e-mail zostaje w formularzu
+const LoginForm = ({ callbackUrl, passwordChanged }: { callbackUrl: string; passwordChanged: boolean }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const message = await login({ email, password, callbackUrl });
+      if (message) {
+        setError(message);
+        setPassword('');
+      }
+    });
+  };
 
   return (
-    <form action={formAction} className="bg-white rounded-lg shadow-sm p-6 flex flex-col gap-4 w-full max-w-sm mt-12">
-      <h1 className="text-2xl font-bold text-gray-900">Logowanie</h1>
-      <input type="hidden" name="callbackUrl" value={callbackUrl} />
-      <input name="email" type="email" required autoComplete="username" placeholder="E-mail" className="border border-gray-200 rounded-md px-3 py-2" />
-      <input name="password" type="password" required autoComplete="current-password" placeholder="Hasło" className="border border-gray-200 rounded-md px-3 py-2" />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button disabled={isPending} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40">
-        {isPending ? 'Logowanie…' : 'Zaloguj'}
-      </button>
-    </form>
+    <Card className="w-full max-w-sm">
+      <CardHeader>
+        <CardTitle className="text-xl">Logowanie</CardTitle>
+        <CardDescription>Panel recepcji i kierownika.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {passwordChanged && !error && (
+            <p className="rounded-md bg-brand-soft px-3 py-2 text-sm text-brand-soft-foreground">
+              Hasło zmienione. Zaloguj się nowym hasłem.
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="login-email">E-mail</Label>
+            <Input id="login-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="login-password">Hasło</Label>
+            <Input id="login-password" type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? 'Logowanie…' : 'Zaloguj'}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 
