@@ -32,5 +32,15 @@ export const dbToDateOnly = (date: Date): string => date.toISOString().slice(0, 
 export const formatTime = (date: Date | string): string =>
   DateTime.fromJSDate(new Date(date)).setZone(SALON_TZ).toFormat('HH:mm');
 
+// MMMM/MMM = forma zależna („12 października”), LLLL byłoby mianownikiem („12 październik”)
 export const formatDate = (date: Date | string): string =>
-  DateTime.fromJSDate(new Date(date)).setZone(SALON_TZ).setLocale('pl').toFormat('ccc, d LLL yyyy');
+  DateTime.fromJSDate(new Date(date)).setZone(SALON_TZ).setLocale('pl').toFormat('ccc, d MMM yyyy');
+
+/** "2026-10-12" -> "poniedziałek, 12 października" (rok tylko gdy inny niż bieżący) */
+export const formatDayLong = (date: string): string => {
+  const day = salonDay(date).setLocale('pl');
+  return day.toFormat(day.year === DateTime.now().setZone(SALON_TZ).year ? 'cccc, d MMMM' : 'cccc, d MMMM yyyy');
+};
+
+/** Krótkie nazwy dni do podsumowań grafiku */
+export const WEEKDAYS_SHORT = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
