@@ -21,14 +21,14 @@ export const authConfig = {
     jwt({ token, user }) {
       if (user?.id) {
         token.employeeId = user.id;
-        token.sessionVersion = user.sessionVersion;
+        token.sessionId = user.sessionId;
       }
       return token;
     },
     session({ session, token }) {
       if (typeof token.employeeId === 'string') session.user.id = token.employeeId;
-      // wersja sesji porównywana z bazą w getCurrentEmployee – zmiana hasła unieważnia stare sesje
-      session.user.sessionVersion = typeof token.sessionVersion === 'number' ? token.sessionVersion : -1;
+      // id sesji sprawdzane w bazie przy każdym żądaniu (getCurrentEmployee) – wylogowanie lub zmiana hasła działa od razu
+      if (typeof token.sessionId === 'string') session.user.sessionId = token.sessionId;
       return session;
     },
   },

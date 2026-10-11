@@ -53,13 +53,14 @@ model Employee {
   role               Role                @default(EMPLOYEE)
   failedLogins       Int                 @default(0) // nieudane logowania z rzędu
   lockedUntil        DateTime?           @db.Timestamptz(6) // blokada logowania po zbyt wielu próbach
-  sessionVersion     Int                 @default(0) // zmiana unieważnia wydane sesje
   transactions       Transaction[]
   services           EmployeeService[]
   workingHours       WorkingHours[]
   shifts             Shift[]
   scheduleExceptions ScheduleException[]
   bookings           Booking[]
+  sessions           AuthSession[]
+  notifications      Notification[]
 }
 
 // Usługi, które dany pracownik wykonuje
@@ -138,6 +139,34 @@ model Booking {
   transactionId String        @db.VarChar(30)
 
   @@index([employeeId, startAt])
+}
+
+// Sesja logowania (jedno urządzenie). Token JWT zawiera tylko jej id – usunięcie wiersza natychmiast wylogowuje.
+model AuthSession {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String   @db.VarChar(30)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt  DateTime @db.Timestamptz(6) // stałe 12 h od zalogowania
+
+  @@index([employeeId])
+}
+
+// Powiadomienia dla kierowników (wspólne – przeczytane przez jednego są przeczytane dla wszystkich)
+model Notification {
+  id         String           @id @default(cuid()) @db.VarChar(30)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(6)
+  type       NotificationType
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade) // konto, którego dotyczy
+  employeeId String           @db.VarChar(30)
+  ipAddress  String?          @db.VarChar(45) // skąd były nieudane próby (z nagłówków żądania)
+  readAt     DateTime?        @db.Timestamptz(6)
+
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  ACCOUNT_LOCKED
 }
 
 enum PaymentType {

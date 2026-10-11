@@ -12,6 +12,7 @@ import { ROLE_LABELS } from "@/lib/roles";
 import { Role } from "../../../generated/prisma";
 import EmployeeDialog from "./EmployeeDialog";
 import UnlockButton from "./UnlockButton";
+import EndSessionsButton from "./EndSessionsButton";
 
 const EmployeesManager = ({ employees, services }: ManagementData) => (
   <div className="flex flex-col gap-4">
@@ -38,6 +39,14 @@ const EmployeesManager = ({ employees, services }: ManagementData) => (
                     <>
                       <Badge variant="outline" className="text-destructive">Zablokowane do {formatTime(employee.lockedUntil)}</Badge>
                       <UnlockButton employeeId={employee.id} name={employee.name} />
+                    </>
+                  )}
+                  {employee.activeSessions > 0 && (
+                    <>
+                      <Badge variant="outline" className="text-brand">
+                        Zalogowany: {employee.activeSessions} {plural(employee.activeSessions, ['urządzenie', 'urządzenia', 'urządzeń'])}
+                      </Badge>
+                      <EndSessionsButton employeeId={employee.id} name={employee.name} />
                     </>
                   )}
                 </p>

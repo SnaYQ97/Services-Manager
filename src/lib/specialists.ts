@@ -1,11 +1,14 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
+import { requireEmployee } from '@/lib/session';
 import { dateOnlyToDb, dbToDateOnly, salonDay, salonToday } from '@/lib/time';
 
 const ABSENCE_HORIZON_DAYS = 14;
 
-/** Pracownicy z grafikiem i nieobecnościami na najbliższe 2 tygodnie – do kart po najechaniu na awatar */
+/** Pracownicy z grafikiem i nieobecnościami na najbliższe 2 tygodnie – do panelu usługi i listy usług */
 export async function getSpecialistsOverview() {
+  // nieobecności (z powodami) tylko dla zalogowanych – strona nie polega wyłącznie na sprawdzeniu w layoucie
+  await requireEmployee();
   const today = salonToday();
   const horizon = salonDay(today).plus({ days: ABSENCE_HORIZON_DAYS }).toISODate()!;
 

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
 import { plural } from '@/lib/format';
-import { hashPassword, MIN_PASSWORD_LENGTH } from '@/lib/password';
+import { hashPassword, MAX_EMAIL_LENGTH, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { timeToMinutes } from '@/lib/time';
 import { BookingStatus, Prisma, Role } from '../../generated/prisma';
 
@@ -15,7 +15,11 @@ export async function getManagementData() {
   const [employees, services] = await Promise.all([
     prisma.employee.findMany({
       orderBy: { name: 'asc' },
-      include: { services: true, workingHours: { orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }] } },
+      include: {
+        services: true,
+        workingHours: { orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }] },
+        _count: { select: { sessions: { where: { expiresAt: { gt: new Date() } } } } },
+      },
     }),
     prisma.service.findMany({ orderBy: { name: 'asc' }, include: { employees: true } }),
   ]);
@@ -30,6 +34,7 @@ export async function getManagementData() {
       role: e.role,
       hasPassword: e.passwordHash !== null,
       lockedUntil: e.lockedUntil && e.lockedUntil > now ? e.lockedUntil.toISOString() : null,
+      activeSessions: e._count.sessions, // zalogowane urządzenia
       serviceIds: e.services.map((s) => s.serviceId),
       workingHours: e.workingHours.map(({ weekday, startMinute, endMinute }) => ({ weekday, startMinute, endMinute })),
     })),
@@ -62,6 +67,7 @@ export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
   const name = input.name.trim();
   const email = input.email.trim().toLowerCase();
   if (!name || !email) return { ok: false, error: 'Podaj imię i e-mail.' };
+  if (email.length > MAX_EMAIL_LENGTH) return { ok: false, error: `E-mail może mieć najwyżej ${MAX_EMAIL_LENGTH} znaków.` };
   const password = input.password ?? '';
   if (password && password.length < MIN_PASSWORD_LENGTH) {
     return { ok: false, error: `Hasło musi mieć co najmniej ${MIN_PASSWORD_LENGTH} znaków.` };
@@ -91,10 +97,11 @@ export async function saveEmployee(input: EmployeeInput): Promise<SaveResult> {
             where: { id: input.id },
             // nowe hasło: wyloguj stare sesje i zdejmij blokadę logowania
             data: passwordHash
-              ? { ...data, passwordHash, sessionVersion: { increment: 1 }, failedLogins: 0, lockedUntil: null }
+              ? { ...data, passwordHash, failedLogins: 0, lockedUntil: null }
               : data,
           })
         : await tx.employee.create({ data: { ...data, passwordHash } });
+      if (input.id && passwordHash) await tx.authSession.deleteMany({ where: { employeeId: employee.id } });
 
       await tx.employeeService.deleteMany({ where: { employeeId: employee.id } });
       await tx.employeeService.createMany({
@@ -171,6 +178,14 @@ export async function saveService(input: ServiceInput): Promise<ServiceSaveResul
 export async function unlockEmployee(employeeId: string): Promise<SaveResult> {
   await requireManager();
   await prisma.employee.update({ where: { id: employeeId }, data: { failedLogins: 0, lockedUntil: null } });
+  revalidatePath('/management/employees');
+  return { ok: true };
+}
+
+/** Wylogowanie pracownika ze wszystkich urządzeń (np. zgubiony telefon, odejście z pracy) */
+export async function endEmployeeSessions(employeeId: string): Promise<SaveResult> {
+  await requireManager();
+  await prisma.authSession.deleteMany({ where: { employeeId } });
   revalidatePath('/management/employees');
   return { ok: true };
 }

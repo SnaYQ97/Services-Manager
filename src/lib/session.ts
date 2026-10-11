@@ -4,12 +4,14 @@ import { prisma } from '@/lib/prisma';
 import { Role } from '../../generated/prisma';
 
 // Rola czytana z bazy przy każdym żądaniu – zmiana roli działa bez ponownego logowania.
-// Sesja wydana przed zmianą hasła (inna sessionVersion) jest traktowana jak wylogowana.
+// Token jest ważny tylko razem z wierszem AuthSession: wylogowanie, zmiana hasła lub wylogowanie
+// przez kierownika usuwa wiersz i stary token (także skopiowany) przestaje działać od razu.
 export async function getCurrentEmployee() {
   const user = (await auth())?.user;
-  if (!user?.id) return null;
-  const employee = await prisma.employee.findUnique({ where: { id: user.id } });
-  return employee && employee.sessionVersion === user.sessionVersion ? employee : null;
+  if (!user?.id || !user.sessionId) return null;
+  const session = await prisma.authSession.findUnique({ where: { id: user.sessionId }, include: { employee: true } });
+  if (!session || session.employeeId !== user.id || session.expiresAt <= new Date()) return null;
+  return session.employee;
 }
 
 export async function isManager() {
