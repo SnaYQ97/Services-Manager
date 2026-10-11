@@ -8,7 +8,8 @@ const RECENT_LIMIT = 20;
 
 /** Ostatnie powiadomienia dla dzwonka kierownika (wspólne dla wszystkich kierowników) */
 export async function getNotifications() {
-  await requireManager();
+  // dzwonek odpytuje co minutę – to nie jest aktywność, więc nie przedłuża sesji
+  await requireManager({ touch: false });
   const now = new Date();
   const [items, unread] = await Promise.all([
     prisma.notification.findMany({

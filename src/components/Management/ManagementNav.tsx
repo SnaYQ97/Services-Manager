@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { href: "/management/services", label: "Usługi" },
   { href: "/management/employees", label: "Pracownicy" },
+  { href: "/management/settings", label: "Ustawienia" },
 ];
 
 const ManagementNav = () => {

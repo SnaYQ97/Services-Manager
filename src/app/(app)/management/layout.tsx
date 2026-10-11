@@ -13,7 +13,7 @@ export default async function ManagementLayout({ children }: { children: React.R
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Zarządzanie" description="Usługi, specjaliści i ich szablony tygodnia." />
+      <PageHeader title="Zarządzanie" description="Usługi, specjaliści, ich szablony tygodnia i ustawienia aplikacji." />
       <ManagementNav />
       {children}
     </div>

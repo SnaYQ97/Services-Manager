@@ -30,6 +30,16 @@ export async function logout() {
   await signOut({ redirectTo: '/login' });
 }
 
+/** Wylogowanie przez licznik bezczynności w przeglądarce – ekran logowania podaje powód */
+export async function idleLogout() {
+  await signOut({ redirectTo: '/login?idle=1' });
+}
+
+/** Sygnał aktywności z przeglądarki (klik, klawiatura, przewijanie) – odsuwa wylogowanie po bezczynności */
+export async function keepAlive() {
+  await getCurrentEmployee();
+}
+
 export async function changeOwnPassword(input: {
   currentPassword: string;
   newPassword: string;

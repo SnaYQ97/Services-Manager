@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 // Pola kontrolowane – po błędnym haśle e-mail zostaje w formularzu
-const LoginForm = ({ callbackUrl, passwordChanged }: { callbackUrl: string; passwordChanged: boolean }) => {
+// notice – komunikat po wylogowaniu (zmiana hasła, bezczynność)
+const LoginForm = ({ callbackUrl, notice }: { callbackUrl: string; notice: string | null }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -34,10 +35,8 @@ const LoginForm = ({ callbackUrl, passwordChanged }: { callbackUrl: string; pass
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {passwordChanged && !error && (
-            <p className="rounded-md bg-brand-soft px-3 py-2 text-sm text-brand-soft-foreground">
-              Hasło zmienione. Zaloguj się nowym hasłem.
-            </p>
+          {notice && !error && (
+            <p className="rounded-md bg-brand-soft px-3 py-2 text-sm text-brand-soft-foreground">{notice}</p>
           )}
           <div className="space-y-1.5">
             <Label htmlFor="login-email">E-mail</Label>

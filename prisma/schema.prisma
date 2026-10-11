@@ -142,14 +142,23 @@ model Booking {
 }
 
 // Sesja logowania (jedno urządzenie). Token JWT zawiera tylko jej id – usunięcie wiersza natychmiast wylogowuje.
+// Ważność liczona z AppSettings: bezczynność od lastSeenAt i twardy limit od createdAt.
 model AuthSession {
   id         String   @id @default(cuid()) @db.VarChar(30)
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String   @db.VarChar(30)
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  expiresAt  DateTime @db.Timestamptz(6) // stałe 12 h od zalogowania
+  createdAt  DateTime @default(now()) @db.Timestamptz(6) // zalogowanie
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(6) // ostatnia aktywność
 
   @@index([employeeId])
+}
+
+// Ustawienia aplikacji – jeden wiersz (id = 1), edytowany w Zarządzanie → Ustawienia
+model AppSettings {
+  id                 Int      @id @default(1)
+  sessionIdleMinutes Int      @default(30) // wylogowanie po bezczynności
+  sessionMaxHours    Int      @default(8) // twardy limit od zalogowania
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
 }
 
 // Powiadomienia dla kierowników (wspólne – przeczytane przez jednego są przeczytane dla wszystkich)

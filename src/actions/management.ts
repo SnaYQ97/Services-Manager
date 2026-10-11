@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { requireManager } from '@/lib/session';
+import { activeSessionWhere, getSessionSettings } from '@/lib/sessionSettings';
 import { plural } from '@/lib/format';
 import { hashPassword, MAX_EMAIL_LENGTH, MIN_PASSWORD_LENGTH } from '@/lib/password';
 import { timeToMinutes } from '@/lib/time';
@@ -12,13 +13,14 @@ const MAX_PRICE = 99_999_999.99; // DECIMAL(10,2)
 
 export async function getManagementData() {
   await requireManager();
+  const settings = await getSessionSettings();
   const [employees, services] = await Promise.all([
     prisma.employee.findMany({
       orderBy: { name: 'asc' },
       include: {
         services: true,
         workingHours: { orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }] },
-        _count: { select: { sessions: { where: { expiresAt: { gt: new Date() } } } } },
+        _count: { select: { sessions: { where: activeSessionWhere(settings) } } },
       },
     }),
     prisma.service.findMany({ orderBy: { name: 'asc' }, include: { employees: true } }),

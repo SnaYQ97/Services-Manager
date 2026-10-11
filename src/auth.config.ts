@@ -1,7 +1,9 @@
 import type { NextAuthConfig } from 'next-auth';
+import { MAX_HOURS_RANGE } from '@/lib/sessionLimits';
 
-// Wspólny komputer w recepcji – sesja wygasa po 12 godzinach
-export const SESSION_MAX_AGE = 12 * 60 * 60;
+// Ciasteczko żyje najwyżej tyle, ile najdłuższy dopuszczalny limit. Właściwy czas sesji (bezczynność
+// i limit z Zarządzanie → Ustawienia) sprawdza baza przy każdym żądaniu – getCurrentEmployee.
+const SESSION_MAX_AGE = MAX_HOURS_RANGE.max * 60 * 60;
 
 // Część konfiguracji bez Prismy/bcrypt – używana też w middleware (edge runtime)
 export const authConfig = {

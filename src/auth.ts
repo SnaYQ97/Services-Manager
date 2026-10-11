@@ -3,7 +3,8 @@ import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { MAX_EMAIL_LENGTH } from '@/lib/password';
-import { authConfig, SESSION_MAX_AGE } from './auth.config';
+import { activeSessionWhere, getSessionSettings } from '@/lib/sessionSettings';
+import { authConfig } from './auth.config';
 import { NotificationType } from '../generated/prisma';
 
 export const MAX_FAILED_LOGINS = 5;
@@ -61,14 +62,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const now = new Date();
+        const settings = await getSessionSettings();
         const [, session] = await prisma.$transaction([
           prisma.employee.update({ where: { id: employee.id }, data: { failedLogins: 0, lockedUntil: null } }),
-          // jedna sesja na urządzenie, ważna stałe 12 h; przy okazji sprzątanie wygasłych sesji tej osoby
-          prisma.authSession.create({
-            data: { employeeId: employee.id, expiresAt: new Date(now.getTime() + SESSION_MAX_AGE * 1000) },
-          }),
-          prisma.authSession.deleteMany({ where: { employeeId: employee.id, expiresAt: { lte: now } } }),
+          // jedna sesja na urządzenie; przy okazji sprzątanie wygasłych sesji tej osoby
+          prisma.authSession.create({ data: { employeeId: employee.id } }),
+          prisma.authSession.deleteMany({ where: { employeeId: employee.id, NOT: activeSessionWhere(settings) } }),
         ]);
         return { id: employee.id, name: employee.name, email: employee.email, sessionId: session.id };
       },
