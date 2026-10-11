@@ -15,20 +15,24 @@ datasource db {
 }
 
 model Service {
-  id        String              @id @default(cuid()) @db.VarChar(30)
-  name      String              @db.VarChar(100)
-  price     Float               @db.Real
-  purchases PurchasedService[]
-} 
+  id          String             @id @default(cuid()) @db.VarChar(30)
+  name        String             @db.VarChar(100)
+  price       Decimal            @db.Decimal(10, 2)
+  durationMin Int                @default(60) // czas trwania wizyty w minutach
+  purchases   PurchasedService[]
+  employees   EmployeeService[]
+  bookings    Booking[]
+}
 
 model Transaction {
-  id            String              @id @default(cuid()) @db.VarChar(30)
-  createdAt     DateTime            @default(now()) @db.Timestamp(6)
-  totalAmount   Float               @db.Real
-  paymentType   PaymentType       
-  services      PurchasedService[]
-  employee      Employee            @relation(fields: [employeeId], references: [id])
-  employeeId    String              @db.VarChar(30)
+  id          String             @id @default(cuid()) @db.VarChar(30)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(6)
+  totalAmount Decimal            @db.Decimal(10, 2)
+  paymentType PaymentType
+  services    PurchasedService[]
+  bookings    Booking[]
+  employee    Employee           @relation(fields: [employeeId], references: [id])
+  employeeId  String             @db.VarChar(30) // pracownik, który przyjął płatność
 }
 
 model PurchasedService {
@@ -38,17 +42,154 @@ model PurchasedService {
   transaction   Transaction @relation(fields: [transactionId], references: [id])
   transactionId String      @db.VarChar(30)
   quantity      Int         @default(1)
-  unitPrice     Float       // snapshot ceny z momentu zakupu
+  unitPrice     Decimal     @db.Decimal(10, 2) // snapshot ceny z momentu zakupu
 }
 
 model Employee {
-  id            String         @id @default(cuid()) @db.VarChar(30)
-  name          String         @db.VarChar(100)
-  email         String         @unique
-  transactions  Transaction[]
+  id                 String              @id @default(cuid()) @db.VarChar(30)
+  name               String              @db.VarChar(100)
+  email              String              @unique
+  passwordHash       String?             @db.VarChar(100) // bcrypt; null = nie może się zalogować
+  role               Role                @default(EMPLOYEE)
+  failedLogins       Int                 @default(0) // nieudane logowania z rzędu
+  lockedUntil        DateTime?           @db.Timestamptz(6) // blokada logowania po zbyt wielu próbach
+  transactions       Transaction[]
+  services           EmployeeService[]
+  workingHours       WorkingHours[]
+  shifts             Shift[]
+  scheduleExceptions ScheduleException[]
+  bookings           Booking[]
+  sessions           AuthSession[]
+  notifications      Notification[]
+}
+
+// Usługi, które dany pracownik wykonuje
+model EmployeeService {
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String   @db.VarChar(30)
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId  String   @db.VarChar(30)
+
+  @@id([employeeId, serviceId])
+}
+
+// Szablon tygodniowy – z niego kierownik generuje grafik miesięczny; minuty od północy (czas salonu)
+model WorkingHours {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String   @db.VarChar(30)
+  weekday     Int // 1 = poniedziałek ... 7 = niedziela
+  startMinute Int
+  endMinute   Int
+
+  @@index([employeeId, weekday])
+}
+
+// Urlop / dzień wolny / niedostępność w części dnia
+model ScheduleException {
+  id          String   @id @default(cuid()) @db.VarChar(30)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String   @db.VarChar(30)
+  date        DateTime @db.Date
+  startMinute Int? // null = cały dzień niedostępny
+  endMinute   Int?
+  reason      String?  @db.VarChar(255)
+
+  @@index([employeeId, date])
+}
+
+// Grafik miesięczny: szkic → publikacja. Wolne terminy liczone są tylko z opublikowanych miesięcy.
+model ScheduleMonth {
+  id          String    @id @default(cuid()) @db.VarChar(30)
+  month       String    @unique @db.Char(7) // "2026-10"
+  publishedAt DateTime? @db.Timestamptz(6) // null = szkic
+  shifts      Shift[]
+}
+
+// Zmiana pracownika w konkretnym dniu (jedno okno na dzień); minuty od północy, czas salonu
+model Shift {
+  id              String        @id @default(cuid()) @db.VarChar(30)
+  scheduleMonth   ScheduleMonth @relation(fields: [scheduleMonthId], references: [id], onDelete: Cascade)
+  scheduleMonthId String        @db.VarChar(30)
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId      String        @db.VarChar(30)
+  date            DateTime      @db.Date
+  startMinute     Int
+  endMinute       Int
+
+  @@unique([employeeId, date])
+  @@index([scheduleMonthId])
+  @@index([date])
+}
+
+model Booking {
+  id            String        @id @default(cuid()) @db.VarChar(30)
+  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
+  startAt       DateTime      @db.Timestamptz(6)
+  endAt         DateTime      @db.Timestamptz(6)
+  status        BookingStatus @default(CONFIRMED)
+  clientName    String        @db.VarChar(100)
+  clientPhone   String        @db.VarChar(30)
+  note          String?       @db.VarChar(500)
+  service       Service       @relation(fields: [serviceId], references: [id])
+  serviceId     String        @db.VarChar(30)
+  employee      Employee      @relation(fields: [employeeId], references: [id]) // specjalista
+  employeeId    String        @db.VarChar(30)
+  transaction   Transaction   @relation(fields: [transactionId], references: [id])
+  transactionId String        @db.VarChar(30)
+
+  @@index([employeeId, startAt])
+}
+
+// Sesja logowania (jedno urządzenie). Token JWT zawiera tylko jej id – usunięcie wiersza natychmiast wylogowuje.
+// Ważność liczona z AppSettings: bezczynność od lastSeenAt i twardy limit od createdAt.
+model AuthSession {
+  id         String   @id @default(cuid()) @db.VarChar(30)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String   @db.VarChar(30)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6) // zalogowanie
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(6) // ostatnia aktywność
+
+  @@index([employeeId])
+}
+
+// Ustawienia aplikacji – jeden wiersz (id = 1), edytowany w Zarządzanie → Ustawienia
+model AppSettings {
+  id                 Int      @id @default(1)
+  sessionIdleMinutes Int      @default(30) // wylogowanie po bezczynności
+  sessionMaxHours    Int      @default(8) // twardy limit od zalogowania
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
+}
+
+// Powiadomienia dla kierowników (wspólne – przeczytane przez jednego są przeczytane dla wszystkich)
+model Notification {
+  id         String           @id @default(cuid()) @db.VarChar(30)
+  createdAt  DateTime         @default(now()) @db.Timestamptz(6)
+  type       NotificationType
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade) // konto, którego dotyczy
+  employeeId String           @db.VarChar(30)
+  ipAddress  String?          @db.VarChar(45) // skąd były nieudane próby (z nagłówków żądania)
+  readAt     DateTime?        @db.Timestamptz(6)
+
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  ACCOUNT_LOCKED
 }
 
 enum PaymentType {
   CASH
   CARD
+}
+
+enum Role {
+  EMPLOYEE
+  RECEPTIONIST // rejestratorka: rezerwacje, płatności, transakcje, podgląd grafiku
+  MANAGER
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
 }
